@@ -231,7 +231,7 @@ function generateCustomerName(card) {
         if (card['公司'] && card['公司'] !== '未知') return card['公司'];
         if (card['行业'] && card['行业'] !== '未知') return card['行业'] + '客户';
     }
-    return 'Customer-' + new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return '新客户-' + new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 // ===== Mode Switching =====
@@ -276,7 +276,24 @@ $('sampleBtn').addEventListener('click', () => {
     chatInput.value = sample;
     charCount.textContent = sample.length + ' 字';
     analyzeBtn.disabled = false;
-    showToast('Sample loaded, click Analyze');
+    showToast('示例已载入，点击开始分析');
+});
+
+// ===== Focus Tag Toggle =====
+const focusTags = document.querySelectorAll('.focus-tag');
+const focusInput = $('focusInput');
+focusTags.forEach(tag => {
+    tag.addEventListener('click', () => {
+        tag.classList.toggle('active');
+        const text = tag.dataset.text;
+        let current = focusInput.value.trim();
+        if (tag.classList.contains('active')) {
+            if (current && !current.endsWith('\n')) current += '\n';
+            focusInput.value = current + text;
+        } else {
+            focusInput.value = current.replace(new RegExp(text + '\\s*\\n?', 'g'), '').trim();
+        }
+    });
 });
 
 // ===== Settings =====
@@ -319,7 +336,7 @@ $('saveSettings').addEventListener('click', () => {
         localStorage.removeItem('apiModel');
     }
     $('settingsModal').style.display = 'none';
-    showToast('Settings saved');
+    showToast('设置已保存');
 });
 
 // ===== History =====
@@ -333,13 +350,13 @@ $('closeHistory').addEventListener('click', () => $('historyModal').style.displa
 function renderHistory() {
     const list = $('historyList');
     if (state.history.length === 0) {
-        list.innerHTML = '<p class="empty-history">No history yet</p>';
+        list.innerHTML = '<p class="empty-history">暂无历史记录</p>';
         return;
     }
     list.innerHTML = state.history.map((item, idx) =>
         '<div class="history-item" data-idx="' + idx + '">' +
             '<div class="history-item-header">' +
-                '<span class="history-item-mode">' + (item.mode === 'chat' ? 'Chat' : 'Q&A') + '</span>' +
+                '<span class="history-item-mode">' + (item.mode === 'chat' ? '聊天分析' : '快速提问') + '</span>' +
                 '<span class="history-item-date">' + item.date + '</span>' +
             '</div>' +
             '<div class="history-item-preview">' + escapeHtml(item.preview) + '</div>' +
@@ -357,11 +374,11 @@ function renderHistory() {
 
 $('clearHistory').addEventListener('click', () => {
     if (state.history.length === 0) return;
-    if (!confirm('Clear all history?')) return;
+    if (!confirm('确认清空全部历史记录？')) return;
     state.history = [];
     localStorage.removeItem('salesHistory');
     renderHistory();
-    showToast('Cleared');
+    showToast('已清空');
 });
 
 function saveHistory(input, result, mode) {
@@ -389,12 +406,12 @@ function renderCustomerList() {
     const list = $('customerList');
     const customers = getCustomers();
     if (customers.length === 0) {
-        list.innerHTML = '<p class="empty-history">No customer profiles yet<br><span style="font-size:12px;color:var(--text-muted)">Analyze a chat to auto-create a profile</span></p>';
+        list.innerHTML = '<p class="empty-history">暂无客户档案<br><span style="font-size:12px;color:var(--text-muted)">分析一段聊天记录后会自动创建客户档案</span></p>';
         return;
     }
     list.innerHTML = customers.map(c => {
         const card = getCustomerCard(c);
-        const stage = card['当前阶段'] || 'Unknown';
+        const stage = card['当前阶段'] || '未知';
         const trust = card['客户信任程度'] || '';
         const intent = card['客户购买意愿'] || '';
         const dealDist = card['距离成交'] || '';
@@ -403,21 +420,21 @@ function renderCustomerList() {
         return '<div class="customer-card" data-id="' + c.id + '">' +
             '<div class="customer-card-header">' +
                 '<div class="customer-card-name">' + escapeHtml(c.name) + '</div>' +
-                '<button class="customer-delete-btn" data-id="' + c.id + '" title="Delete">' +
+                '<button class="customer-delete-btn" data-id="' + c.id + '" title="删除">' +
                     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
                 '</button>' +
             '</div>' +
             '<div class="customer-card-meta">' +
                 '<span class="customer-tag">' + escapeHtml(stage) + '</span>' +
-                (trust ? '<span class="customer-tag">Trust ' + escapeHtml(trust) + '</span>' : '') +
-                (intent ? '<span class="customer-tag">Intent ' + escapeHtml(intent) + '</span>' : '') +
-                (dealDist ? '<span class="customer-tag">' + escapeHtml(dealDist) + '</span>' : '') +
+                (trust ? '<span class="customer-tag">信任 ' + escapeHtml(trust) + '</span>' : '') +
+                (intent ? '<span class="customer-tag">意向 ' + escapeHtml(intent) + '</span>' : '') +
+                (dealDist ? '<span class="customer-tag">距成交 ' + escapeHtml(dealDist) + '</span>' : '') +
             '</div>' +
             '<div class="customer-card-footer">' +
-                '<span>' + (c.analysisCount || 1) + ' analyses / ' + tlCount + ' timeline</span>' +
-                '<span>Updated ' + lastDate + '</span>' +
+                '<span>' + (c.analysisCount || 1) + ' 次分析 / ' + tlCount + ' 条时间线</span>' +
+                '<span>更新于 ' + lastDate + '</span>' +
             '</div>' +
-            '<button class="customer-view-btn" data-id="' + c.id + '">View Profile</button>' +
+            '<button class="customer-view-btn" data-id="' + c.id + '">查看档案</button>' +
         '</div>';
     }).join('');
 
@@ -447,10 +464,10 @@ function renderCustomerList() {
             e.stopPropagation();
             const id = btn.dataset.id;
             const customer = getCustomer(id);
-            if (!confirm('Delete customer "' + (customer ? customer.name : '') + '"? This cannot be undone.')) return;
+            if (!confirm('确认删除客户"' + (customer ? customer.name : '') + '"？此操作不可撤销。')) return;
             deleteCustomer(id);
             renderCustomerList();
-            showToast('Deleted');
+            showToast('已删除');
         });
     });
 }
@@ -472,36 +489,36 @@ function renderProfileView(customer) {
     const latestAnalysis = analyses.length > 0 ? analyses[analyses.length - 1] : null;
 
     // === Header ===
-    const stage = card['当前阶段'] || 'Unknown';
+    const stage = card['当前阶段'] || '未知';
     const trustLevel = card['客户信任程度'] || '-';
     const intent = card['客户购买意愿'] || '-';
     const dealDistance = card['距离成交'] || '-';
-    const riskLevel = card['新增风险'] || 'None';
+    const riskLevel = card['新增风险'] || '无';
 
     let html = '';
 
     html += '<div class="crm-header">';
     html += '  <div class="crm-header-top">';
-    html += '    <h2 class="crm-customer-name">' + escapeHtml(customer.name) + '</h2>';
+    html += '    <h2 class="crm-customer-name" contenteditable="true" id="crmCustomerName" title="点击可编辑客户名称">' + escapeHtml(customer.name) + '</h2>';
     html += '    <div class="crm-header-actions">';
     html += '      <button class="crm-continue-btn" id="profileContinueBtn">';
     html += '        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
-    html += '        Continue Analysis';
+    html += '        继续分析该客户';
     html += '      </button>';
-    html += '      <button class="crm-back-btn" id="profileBackBtn">New Customer</button>';
+    html += '      <button class="crm-back-btn" id="profileBackBtn">新客户分析</button>';
     html += '    </div>';
     html += '  </div>';
     html += '  <div class="crm-header-meta">';
-    html += '    <div class="crm-meta-item"><span class="crm-meta-label">Stage</span><span class="crm-meta-value">' + escapeHtml(stage) + '</span></div>';
-    html += '    <div class="crm-meta-item"><span class="crm-meta-label">Trust</span><span class="crm-meta-value">' + escapeHtml(trustLevel) + '</span></div>';
-    html += '    <div class="crm-meta-item"><span class="crm-meta-label">Intent</span><span class="crm-meta-value">' + escapeHtml(intent) + '</span></div>';
-    html += '    <div class="crm-meta-item"><span class="crm-meta-label">Deal Distance</span><span class="crm-meta-value">' + escapeHtml(dealDistance) + '</span></div>';
+    html += '    <div class="crm-meta-item"><span class="crm-meta-label">客户阶段</span><span class="crm-meta-value">' + escapeHtml(stage) + '</span></div>';
+    html += '    <div class="crm-meta-item"><span class="crm-meta-label">成交概率</span><span class="crm-meta-value">' + escapeHtml(dealDistance) + '</span></div>';
+    html += '    <div class="crm-meta-item"><span class="crm-meta-label">客户信任度</span><span class="crm-meta-value">' + escapeHtml(trustLevel) + '</span></div>';
+    html += '    <div class="crm-meta-item"><span class="crm-meta-label">风险等级</span><span class="crm-meta-value">' + escapeHtml(riskLevel) + '</span></div>';
     html += '  </div>';
     html += '</div>';
 
     // === Memory Card ===
     html += '<div class="crm-section">';
-    html += '  <h3 class="crm-section-title">Customer Memory Card</h3>';
+    html += '  <h3 class="crm-section-title">客户智能档案</h3>';
     html += '  <div class="crm-card-content">';
 
     for (const section of CARD_SECTIONS) {
@@ -528,7 +545,7 @@ function renderProfileView(customer) {
 
     // If card is empty (e.g. old customer without card)
     if (CARD_SECTIONS.every(s => s.fields.every(f => !card[f]))) {
-        html += '<p style="color:var(--text-muted);font-size:13px;padding:16px 0;">No memory card data yet. Run a new analysis to generate one.</p>';
+        html += '<p style="color:var(--text-muted);font-size:13px;padding:16px 0;">暂无档案数据，分析一段聊天记录后会自动生成。</p>';
     }
 
     html += '  </div>';
@@ -537,11 +554,11 @@ function renderProfileView(customer) {
     // === Latest Analysis ===
     if (latestAnalysis && latestAnalysis.result) {
         html += '<div class="crm-section">';
-        html += '  <h3 class="crm-section-title">Latest Analysis <span class="crm-analysis-date">' + escapeHtml(latestAnalysis.date || '') + ' / ' + escapeHtml(latestAnalysis.type || 'first') + '</span></h3>';
+        html += '  <h3 class="crm-section-title">最新分析结果 <span class="crm-analysis-date">' + escapeHtml(latestAnalysis.date || '') + ' / ' + escapeHtml(latestAnalysis.type === 'incremental' ? '增量' : '首次') + '</span></h3>';
         html += '  <div class="crm-analysis-content" id="profileAnalysisContainer"></div>';
         html += '  <div class="crm-export-section">';
-        html += '    <button class="export-btn" id="profileExportBtn">Export</button>';
-        html += '    <button class="export-btn" id="profileCopyBtn">Copy All</button>';
+        html += '    <button class="export-btn" id="profileExportBtn">导出</button>';
+        html += '    <button class="export-btn" id="profileCopyBtn">复制全部</button>';
         html += '  </div>';
         html += '</div>';
     }
@@ -549,7 +566,7 @@ function renderProfileView(customer) {
     // === Timeline ===
     if (timeline.length > 0) {
         html += '<div class="crm-section">';
-        html += '  <h3 class="crm-section-title">Communication Timeline</h3>';
+        html += '  <h3 class="crm-section-title">沟通时间线</h3>';
         html += '  <div class="crm-timeline">';
 
         for (let i = timeline.length - 1; i >= 0; i--) {
@@ -558,10 +575,10 @@ function renderProfileView(customer) {
             html += '<div class="timeline-item' + (isLatest ? ' timeline-latest' : '') + '">';
             html += '  <div class="timeline-marker"></div>';
             html += '  <div class="timeline-body">';
-            html += '    <div class="timeline-date">' + escapeHtml(entry.date || '') + '</div>';
-            html += '    <div class="timeline-event">' + escapeHtml(entry.event || '') + '</div>';
-            html += '    <div class="timeline-judgment"><span class="timeline-tag">Judgment</span>' + escapeHtml(entry.judgment || '') + '</div>';
-            html += '    <div class="timeline-advice"><span class="timeline-tag timeline-tag-blue">Advice</span>' + escapeHtml(entry.advice || '') + '</div>';
+            html += '    <div class="timeline-date">' + escapeHtml(entry['日期'] || entry.date || '') + '</div>';
+            html += '    <div class="timeline-event">' + escapeHtml(entry['事件'] || entry.event || '') + '</div>';
+            html += '    <div class="timeline-judgment"><span class="timeline-tag">判断</span>' + escapeHtml(entry['判断'] || entry.judgment || '') + '</div>';
+            html += '    <div class="timeline-advice"><span class="timeline-tag timeline-tag-blue">建议</span>' + escapeHtml(entry['建议'] || entry.advice || '') + '</div>';
             html += '  </div>';
             html += '</div>';
         }
@@ -581,7 +598,7 @@ function renderProfileView(customer) {
         // Bind export
         $('profileExportBtn')?.addEventListener('click', () => exportResults(latestAnalysis.result));
         $('profileCopyBtn')?.addEventListener('click', () => {
-            navigator.clipboard.writeText(latestAnalysis.result).then(() => showToast('Copied'));
+            navigator.clipboard.writeText(latestAnalysis.result).then(() => showToast('已复制'));
         });
     }
 
@@ -593,6 +610,30 @@ function renderProfileView(customer) {
     // Bind back button
     $('profileBackBtn')?.addEventListener('click', () => {
         exitToNewCustomer();
+    });
+
+    // Bind editable customer name
+    $('crmCustomerName')?.addEventListener('blur', (e) => {
+        const newName = e.target.textContent.trim();
+        if (newName && newName !== customer.name) {
+            customer.name = newName;
+            saveCustomer(customer);
+            showToast('客户名称已更新');
+            // Update follow-up banner if active
+            if (state.currentCustomerId === customer.id) {
+                $('followupName').textContent = newName;
+            }
+        } else if (!newName) {
+            e.target.textContent = customer.name;
+        }
+    });
+
+    // Prevent enter key in editable name (use blur instead)
+    $('crmCustomerName')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.target.blur();
+        }
     });
 }
 
@@ -610,15 +651,12 @@ function startFollowUp(customerId) {
 
     // Update analyze button
     analyzeBtn.innerHTML =
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>Update Profile';
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>增量分析';
 
-    // Clear input
-    chatInput.value = '';
-    charCount.textContent = '0 字';
-    analyzeBtn.disabled = true;
-
-    // Update placeholder
-    chatInput.placeholder = 'Paste this customer\'s latest chat here\n\nThe system will do an incremental analysis based on the memory card';
+    // Do NOT clear chat input - keep existing content for reference
+    // User can append new chat or clear manually
+    chatInput.placeholder = '在此粘贴该客户的最新聊天记录...\n\n系统会基于客户记忆卡片进行增量分析\n你也可以在原有聊天后面追加新内容';
+    analyzeBtn.disabled = chatInput.value.trim().length < 5;
 
     // Keep showing profile view (or show it if not visible)
     if (state.currentProfileId !== customerId) {
@@ -643,13 +681,15 @@ function exitToNewCustomer() {
     $('followupBanner').style.display = 'none';
 
     analyzeBtn.innerHTML =
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>Start Analysis';
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>开始分析';
 
-    chatInput.placeholder = 'Paste WeChat chat records here\n\nFormat example:\nClient: How do you do SEO?\nMe: We specialize in Google optimization...\nClient: How much?\nMe: ...';
+    chatInput.placeholder = '把微信/邮件聊天记录粘贴在这里\n\n格式示例：\n客户：你们的SEO怎么做？\n我：我们是专门做Google优化的...\n客户：多少钱？\n我：...\n\n分析完成后聊天记录不会清空，方便你对照查看';
 
     setView('empty');
-    $('emptyState').querySelector('h3').textContent = 'Paste chat records to start analysis';
-    $('emptyState').querySelector('p').innerHTML = 'Paste customer WeChat records on the left, click Start Analysis<br>The system will analyze from 7 dimensions: psychology, sales issues, scripts, etc.';
+    const emptyH3 = $('emptyState').querySelector('h3');
+    const emptyP = $('emptyState').querySelector('p');
+    if (emptyH3) emptyH3.textContent = '粘贴聊天记录，开始分析';
+    if (emptyP) emptyP.innerHTML = '把客户微信/邮件聊天记录粘贴到左边，点击「开始分析」<br>系统会从客户心理、销售问题、话术建议等7个维度帮你拆解';
 
     chatInput.focus();
 }
@@ -660,23 +700,33 @@ $('exitFollowUpBtn').addEventListener('click', exitToNewCustomer);
 $('copyPromptBtn').addEventListener('click', () => {
     const input = state.mode === 'chat' ? chatInput.value : questionInput.value;
     if (!input || input.trim().length < 5) {
-        showToast('Please enter chat records or a question first');
+        showToast('请先输入聊天记录或问题');
         return;
     }
     const context = buildContext();
+    const salesNotes = buildSalesNotes();
+    const focusQuestion = buildFocusQuestion();
     const prompt = state.isFollowUpMode ? window.INCREMENTAL_PROMPT : window.SYSTEM_PROMPT;
     let fullPrompt;
     if (state.isFollowUpMode && state.currentCustomerId) {
         const customer = getCustomer(state.currentCustomerId);
         const cardStr = buildCardContextString(customer);
-        fullPrompt = prompt + '\n\n---\n\n# Customer Memory Card\n\n' + cardStr + '\n\n---\n\n' + context + '\n\nChat records:\n' + input;
+        fullPrompt = prompt + '\n\n---\n\n# 客户记忆卡片\n\n' + cardStr + '\n\n---\n\n';
+        if (context) fullPrompt += context + '\n';
+        if (salesNotes) fullPrompt += '# 销售补充信息\n' + salesNotes + '\n';
+        if (focusQuestion) fullPrompt += '# 本次希望AI帮我解决什么\n' + focusQuestion + '\n';
+        fullPrompt += '\n聊天记录：\n' + input;
     } else {
-        fullPrompt = prompt + '\n\n---\n\n# User Input\n\n' + context + '\n\nChat records:\n' + input;
+        fullPrompt = prompt + '\n\n---\n\n';
+        if (context) fullPrompt += context + '\n';
+        if (salesNotes) fullPrompt += '# 销售补充信息\n' + salesNotes + '\n';
+        if (focusQuestion) fullPrompt += '# 本次希望AI帮我解决什么\n' + focusQuestion + '\n';
+        fullPrompt += '\n聊天记录：\n' + input;
     }
     navigator.clipboard.writeText(fullPrompt).then(() => {
-        showToast('Full prompt copied! Paste into any AI tool');
+        showToast('完整Prompt已复制，可粘贴到任何AI工具使用');
     }).catch(() => {
-        showToast('Copy failed, please select manually');
+        showToast('复制失败，请手动选择复制');
     });
 });
 
@@ -686,10 +736,22 @@ function buildContext() {
     const industry = $('customerIndustry').value;
     const service = $('serviceType').value;
     let context = '';
-    if (role) context += 'Customer role: ' + role + '\n';
-    if (industry) context += 'Customer industry: ' + industry + '\n';
-    if (service) context += 'Service type: ' + service + '\n';
-    return context ? 'Customer background:\n' + context : '';
+    if (role) context += '客户角色：' + role + '\n';
+    if (industry) context += '客户行业：' + industry + '\n';
+    if (service) context += '涉及服务：' + service + '\n';
+    return context ? '客户背景信息：\n' + context : '';
+}
+
+function buildSalesNotes() {
+    const el = $('salesNotesInput');
+    if (!el) return '';
+    return el.value.trim();
+}
+
+function buildFocusQuestion() {
+    const el = $('focusInput');
+    if (!el) return '';
+    return el.value.trim();
 }
 
 // ===== Main Analysis =====
@@ -699,7 +761,7 @@ askBtn.addEventListener('click', () => analyze(questionInput.value, 'quick'));
 async function analyze(input, mode) {
     const config = getApiConfig();
     if (!config.apiKey || !config.baseUrl || !config.model) {
-        showToast('Please configure API Key in settings');
+        showToast('请在设置中配置 API Key');
         $('settingsBtn').click();
         return;
     }
@@ -709,32 +771,44 @@ async function analyze(input, mode) {
 
     // Update loading text
     if (state.isFollowUpMode && mode === 'chat') {
-        $('loadingText').textContent = 'Updating customer profile...';
-        if ($('loadingHint')) $('loadingHint').textContent = 'AI is comparing psychology changes and updating memory card';
+        $('loadingText').textContent = '正在更新客户档案...';
+        if ($('loadingHint')) $('loadingHint').textContent = 'AI正在对比心理变化并更新记忆卡片';
     } else {
-        $('loadingText').textContent = 'Analyzing chat records...';
-        if ($('loadingHint')) $('loadingHint').textContent = 'AI is analyzing from 7 dimensions';
+        $('loadingText').textContent = '正在分析聊天记录...';
+        if ($('loadingHint')) $('loadingHint').textContent = 'AI正在从7个维度拆解这段对话';
     }
 
     animateLoadingSteps();
 
     // Build messages
     const context = buildContext();
+    const salesNotes = buildSalesNotes();
+    const focusQuestion = buildFocusQuestion();
     let messages;
+
+    // Build supplementary context string
+    let supplement = '';
+    if (context) supplement += context + '\n';
+    if (salesNotes) supplement += '# 销售补充信息\n' + salesNotes + '\n';
+    if (focusQuestion) supplement += '# 本次希望AI帮我解决什么\n' + focusQuestion + '\n';
 
     if (mode === 'chat') {
         if (state.currentCustomerId) {
             // ===== Incremental Analysis =====
             const customer = getCustomer(state.currentCustomerId);
             const cardStr = buildCardContextString(customer);
-            const userContent = '# Customer Memory Card\n\n' + (cardStr || 'No history yet') + '\n\n---\n\n' + context + '\n\nPlease analyze the latest chat records (this is a follow-up conversation with this customer):\n\n' + input;
+            let userContent = '# 客户记忆卡片\n\n' + (cardStr || '暂无历史记录') + '\n\n---\n\n';
+            if (supplement) userContent += supplement + '\n';
+            userContent += '请分析以下最新聊天记录（这是该客户的后续沟通）：\n\n' + input;
             messages = [
                 { role: 'system', content: window.INCREMENTAL_PROMPT },
                 { role: 'user', content: userContent }
             ];
         } else {
             // ===== First Analysis =====
-            const userContent = context + '\n\nPlease analyze the following chat records:\n\n' + input;
+            let userContent = '';
+            if (supplement) userContent += supplement + '\n';
+            userContent += '请分析以下聊天记录：\n\n' + input;
             messages = [
                 { role: 'system', content: window.SYSTEM_PROMPT },
                 { role: 'user', content: userContent }
@@ -742,7 +816,9 @@ async function analyze(input, mode) {
         }
     } else {
         // Quick question mode
-        const userContent = context + '\n\nSales question:\n' + input + '\n\nPlease provide detailed analysis and advice based on your expertise.';
+        let userContent = '';
+        if (supplement) userContent += supplement + '\n';
+        userContent += '销售问题：\n' + input + '\n\n请基于你的专业知识给出详细分析和建议。';
         messages = [
             { role: 'system', content: window.SYSTEM_PROMPT },
             { role: 'user', content: userContent }
@@ -781,7 +857,7 @@ async function analyze(input, mode) {
                     customer.analyses = customer.analyses.slice(-20);
                 }
                 saveCustomer(customer);
-                showToast('Customer profile updated');
+                showToast('客户档案已更新');
 
                 // Show updated profile view
                 showProfileView(state.currentCustomerId);
@@ -811,10 +887,10 @@ async function analyze(input, mode) {
                 $('followupBanner').style.display = 'flex';
                 $('followupName').textContent = name;
                 analyzeBtn.innerHTML =
-                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>Update Profile';
-                chatInput.placeholder = 'Paste this customer\'s latest chat here\n\nThe system will do an incremental analysis based on the memory card';
+                    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>增量分析';
+                chatInput.placeholder = '在此粘贴该客户的最新聊天记录...\n\n系统会基于客户记忆卡片进行增量分析\n你也可以在原有聊天后面追加新内容';
 
-                showToast('Customer profile created');
+                showToast('客户档案已创建');
                 showProfileView(customer.id);
             }
         } else {
@@ -828,12 +904,12 @@ async function analyze(input, mode) {
         setView('empty');
         console.error('API Error:', error);
         let errMsg = error.message || 'Unknown error';
-        if (errMsg.includes('401')) errMsg = 'Invalid API Key, please check settings';
-        else if (errMsg.includes('402')) errMsg = 'API balance insufficient, please contact admin';
-        else if (errMsg.includes('429')) errMsg = 'Too many requests, please try later';
-        else if (errMsg.includes('500')) errMsg = 'Server error, please try later';
-        else if (errMsg.includes('Failed to fetch')) errMsg = 'Network connection failed, check network or VPN';
-        showToast('Analysis failed: ' + errMsg, 4000);
+        if (errMsg.includes('401')) errMsg = 'API Key 无效，请检查设置';
+        else if (errMsg.includes('402')) errMsg = 'API 余额不足，请联系管理员充值';
+        else if (errMsg.includes('429')) errMsg = '请求过多，请稍后再试';
+        else if (errMsg.includes('500')) errMsg = '服务器错误，请稍后再试';
+        else if (errMsg.includes('Failed to fetch')) errMsg = '网络连接失败，请检查网络或VPN';
+        showToast('分析失败：' + errMsg, 4000);
     }
 }
 
@@ -841,7 +917,7 @@ async function analyze(input, mode) {
 async function callAPI(messages) {
     const config = getApiConfig();
     if (!config.apiKey || !config.baseUrl || !config.model) {
-        throw new Error('API config incomplete, please configure in settings');
+        throw new Error('API配置不完整，请在设置中配置');
     }
 
     const response = await fetch(config.baseUrl, {
@@ -943,7 +1019,7 @@ function renderStreamingResults(text) {
         card.className = 'result-card';
         card.innerHTML =
             '<div class="result-card-header">' +
-                '<span class="card-badge blue">Generating...</span>' +
+                '<span class="card-badge blue">正在生成...</span>' +
             '</div>' +
             '<div class="result-card-body" style="white-space: pre-wrap; font-size: 13px; color: var(--text-secondary);">' +
                 escapeHtml(text) +
@@ -965,7 +1041,7 @@ function renderAnalysisSections(text, container) {
     if (sections.length === 0) {
         container.innerHTML =
             '<div class="result-card">' +
-                '<div class="result-card-header"><span class="card-badge blue">Analysis Result</span></div>' +
+                '<div class="result-card-header"><span class="card-badge blue">分析结果</span></div>' +
                 '<div class="result-card-body" style="white-space: pre-wrap;">' + escapeHtml(text) + '</div>' +
             '</div>';
     } else {
@@ -982,7 +1058,7 @@ function renderAnalysisSections(text, container) {
             navigator.clipboard.writeText(copyText).then(() => {
                 const original = btn.innerHTML;
                 btn.classList.add('copied');
-                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Copied';
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>已复制';
                 setTimeout(() => {
                     btn.classList.remove('copied');
                     btn.innerHTML = original;
@@ -1004,18 +1080,18 @@ function displayResults(text) {
         '<div class="export-section">' +
             '<button class="export-btn" id="exportBtn">' +
                 '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
-                'Export' +
+                '导出' +
             '</button>' +
             '<button class="export-btn" id="copyAllBtn">' +
                 '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
-                'Copy All' +
+                '复制全部' +
             '</button>' +
         '</div>'
     );
 
     $('exportBtn')?.addEventListener('click', () => exportResults(text));
     $('copyAllBtn')?.addEventListener('click', () => {
-        navigator.clipboard.writeText(text).then(() => showToast('Copied all'));
+        navigator.clipboard.writeText(text).then(() => showToast('已全部复制'));
     });
 
     state.currentResult = text;
@@ -1057,7 +1133,8 @@ function renderSection(section) {
         '策略效果评估': { class: 'teal' },
         '下一句话怎么回复': { class: 'green' },
         '后续跟进建议': { class: 'indigo' },
-        '风险提醒': { class: 'red' }
+        '风险提醒': { class: 'red' },
+        '针对问题回答': { class: 'indigo' }
     };
 
     const badge = firstAnalysisMap[title] || incrementalMap[title] || { class: 'blue' };
@@ -1145,10 +1222,10 @@ function renderReplySection(content, badge, title) {
         const copyText = s.content;
         return '<div class="scheme-card">' +
             '<div class="scheme-header">' +
-                '<span class="scheme-label">Scheme ' + escapeHtml(s.letter) + '<span class="tag ' + tagClass + '">' + escapeHtml(s.tag) + '</span></span>' +
+                '<span class="scheme-label">方案 ' + escapeHtml(s.letter) + '<span class="tag ' + tagClass + '">' + escapeHtml(s.tag) + '</span></span>' +
                 '<button class="copy-btn" data-copy-text="' + escapeAttr(copyText) + '">' +
                     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
-                    'Copy' +
+                    '复制' +
                 '</button>' +
             '</div>' +
             '<div class="scheme-content">' + escapeHtml(s.content) + '</div>' +
@@ -1196,7 +1273,7 @@ function renderSuggestionSection(content, badge, title) {
     const itemsHtml = items.map(function(item) {
         const isRisk = item.label.includes('风险') || item.label.includes('不要');
         if (isRisk) {
-            const risks = item.text.split(/不要/).filter(function(s) { return s.trim(); }).map(function(s) { return 'Do not ' + s.trim(); });
+            const risks = item.text.split(/不要/).filter(function(s) { return s.trim(); }).map(function(s) { return '不要' + s.trim(); });
             return '<div class="suggestion-item">' +
                 '<div class="suggestion-label">' + escapeHtml(item.label) + '</div>' +
                 '<ul class="risk-list">' + risks.map(function(r) { return '<li class="risk-item">' + escapeHtml(r) + '</li>'; }).join('') + '</ul>' +
@@ -1245,13 +1322,13 @@ function exportResults(text) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('Exported');
+    showToast('已导出');
 }
 
 // ===== Init =====
 if (!hasApiKey()) {
     setTimeout(() => {
-        showToast('First time? Please configure API Key in settings', 3000);
+        showToast('首次使用？请在设置中配置 API Key', 3000);
     }, 500);
 }
 

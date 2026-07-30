@@ -97,11 +97,38 @@
             <div class="chat-input-section">
                 <div class="section-label">粘贴聊天记录</div>
                 <div class="textarea-wrapper">
-                    <textarea id="chatInput" placeholder="把微信聊天记录粘贴在这里&#10;&#10;格式示例：&#10;客户：你们的SEO怎么做？&#10;我：我们是专门做Google优化的...&#10;客户：多少钱？&#10;我：...&#10;&#10;也可以直接粘贴任意格式的聊天内容"></textarea>
+                    <textarea id="chatInput" placeholder="把微信/邮件聊天记录粘贴在这里&#10;&#10;格式示例：&#10;客户：你们的SEO怎么做？&#10;我：我们是专门做Google优化的...&#10;客户：多少钱？&#10;我：...&#10;&#10;分析完成后聊天记录不会清空，方便你对照查看"></textarea>
                     <div class="textarea-footer">
                         <span id="charCount" class="char-count">0 字</span>
                         <button id="clearBtn" class="text-btn">清空</button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Sales Notes Input -->
+            <div class="chat-input-section">
+                <div class="section-label">销售补充信息 <span class="optional">（选填，填写聊天记录中没有体现但你知道的重要信息）</span></div>
+                <div class="textarea-wrapper textarea-sm">
+                    <textarea id="salesNotesInput" placeholder="例如：&#10;客户来源：Google广告来的&#10;已经打过电话，客户态度还行&#10;已经发过报价单&#10;客户老板比较强势&#10;客户预算大概5万&#10;客户正在比较3家供应商&#10;客户性格比较急"></textarea>
+                </div>
+            </div>
+
+            <!-- Focus Question Input -->
+            <div class="chat-input-section">
+                <div class="section-label">本次希望AI帮我解决什么 <span class="optional">（选填，AI会重点围绕你的问题回答）</span></div>
+                <div class="focus-tags" id="focusTags">
+                    <button class="focus-tag" data-text="分析客户真实想法">分析客户真实想法</button>
+                    <button class="focus-tag" data-text="判断客户成交意向">判断客户成交意向</button>
+                    <button class="focus-tag" data-text="帮我回复客户">帮我回复客户</button>
+                    <button class="focus-tag" data-text="判断是否应该报价">判断是否应该报价</button>
+                    <button class="focus-tag" data-text="帮我推进成交">帮我推进成交</button>
+                    <button class="focus-tag" data-text="分析客户为什么不回复">分析客户为什么不回复</button>
+                    <button class="focus-tag" data-text="分析客户为什么压价">分析客户为什么压价</button>
+                    <button class="focus-tag" data-text="帮我预约电话/视频会议">帮我预约电话/视频会议</button>
+                    <button class="focus-tag" data-text="判断客户是否值得继续跟进">判断客户是否值得继续跟进</button>
+                </div>
+                <div class="textarea-wrapper textarea-sm">
+                    <textarea id="focusInput" placeholder="也可以自己描述本次希望AI帮你解决的问题...&#10;选中的快捷选项会出现在这里，你也可以手动修改"></textarea>
                 </div>
             </div>
 
@@ -150,7 +177,7 @@
                 </svg>
             </div>
             <h3>粘贴聊天记录，开始分析</h3>
-            <p>把客户微信聊天记录粘贴到左边，点击「开始分析」<br>系统会从客户心理、销售问题、话术建议等7个维度帮你拆解</p>
+            <p>把客户微信/邮件聊天记录粘贴到左边，点击「开始分析」<br>系统会从客户心理、销售问题、话术建议等7个维度帮你拆解</p>
             <div class="feature-list">
                 <div class="feature-item">
                     <span class="feature-badge blue">心理</span>

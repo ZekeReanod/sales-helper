@@ -187,6 +187,52 @@ body {
 /* Chat Input */
 .chat-input-section { margin-bottom: 16px; }
 
+/* Small textarea for sales notes & focus question */
+.textarea-sm textarea {
+    min-height: 100px;
+    font-size: 12px;
+}
+
+/* Focus Tags */
+.focus-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.focus-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.focus-tag:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-lighter);
+}
+
+.focus-tag.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.focus-tag.active::before {
+    content: "\2713 ";
+    margin-right: 4px;
+    font-weight: 700;
+}
+
 .textarea-wrapper {
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -902,6 +948,7 @@ textarea::placeholder { color: var(--text-muted); }
     .subtitle { display: none; }
     .header-btn span { display: none; }
     .followup-banner { font-size: 12px; }
+    .focus-tag { font-size: 11px; padding: 4px 10px; }
     .crm-group-fields { grid-template-columns: 1fr; }
     .crm-header-meta { gap: 12px; }
     .crm-customer-name { font-size: 18px; }
@@ -1112,6 +1159,21 @@ textarea::placeholder { color: var(--text-muted); }
     font-weight: 700;
     color: var(--text);
     margin: 0;
+    outline: none;
+    cursor: text;
+    padding: 4px 8px;
+    margin-left: -8px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s;
+}
+
+.crm-customer-name:hover {
+    background: var(--bg);
+}
+
+.crm-customer-name:focus {
+    background: var(--primary-lighter);
+    box-shadow: 0 0 0 2px var(--primary-light);
 }
 
 .crm-header-actions {
