@@ -23,6 +23,10 @@
         <span class="subtitle">REANOD 销售赋能工具</span>
     </div>
     <div class="header-right">
+        <button id="customerBtn" class="header-btn" title="客户档案">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>客户档案</span>
+        </button>
         <button id="historyBtn" class="header-btn" title="历史记录">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
             <span>历史</span>
@@ -54,6 +58,15 @@
 
         <!-- Chat Analysis Mode -->
         <div class="mode-content active" id="chatMode">
+
+            <!-- Follow-up Banner -->
+            <div class="followup-banner" id="followupBanner" style="display:none">
+                <div class="followup-info">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>
+                    <span>正在跟进：<strong id="followupName"></strong></span>
+                </div>
+                <button id="exitFollowUpBtn" class="followup-exit">新客户分析</button>
+            </div>
 
             <!-- Context Fields -->
             <div class="context-section">
@@ -165,7 +178,7 @@
                     <div class="spinner"></div>
                 </div>
                 <h3 id="loadingText">正在分析聊天记录...</h3>
-                <p class="loading-hint">AI正在从7个维度拆解这段对话</p>
+                <p class="loading-hint" id="loadingHint">AI正在从7个维度拆解这段对话</p>
                 <div class="loading-steps">
                     <div class="loading-step" id="step1">分析客户画像</div>
                     <div class="loading-step" id="step2">判断客户心理</div>
@@ -178,6 +191,11 @@
         <!-- Results Container -->
         <div class="results-container" id="resultsContainer" style="display:none">
             <!-- Results will be dynamically inserted here -->
+        </div>
+
+        <!-- Profile Container (CRM Customer Profile View) -->
+        <div class="profile-container" id="profileContainer" style="display:none">
+            <!-- CRM profile will be dynamically inserted here -->
         </div>
 
     </section>
@@ -244,6 +262,19 @@
         </div>
         <div class="modal-footer">
             <button id="clearHistory" class="danger-btn">清空全部</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ Customer Modal ============ -->
+<div class="modal-overlay" id="customerModal" style="display:none">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2>客户档案</h2>
+            <button class="modal-close" id="closeCustomer">×</button>
+        </div>
+        <div class="modal-body" id="customerList">
+            <p class="empty-history">暂无客户档案</p>
         </div>
     </div>
 </div>
