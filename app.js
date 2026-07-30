@@ -66,6 +66,20 @@ function showToast(msg, duration) {
     setTimeout(() => { toast.style.display = 'none'; }, duration);
 }
 
+// Clear all input fields (chat record, sales notes, focus question, focus tags)
+function clearInputs() {
+    if (chatInput) {
+        chatInput.value = '';
+        charCount.textContent = '0 字';
+        analyzeBtn.disabled = true;
+    }
+    const notesEl = $('salesNotesInput');
+    if (notesEl) notesEl.value = '';
+    const focusEl = $('focusInput');
+    if (focusEl) focusEl.value = '';
+    document.querySelectorAll('.focus-tag.active').forEach(tag => tag.classList.remove('active'));
+}
+
 // ===== View Management =====
 function setView(view) {
     $('emptyState').style.display = 'none';
@@ -516,7 +530,78 @@ function renderProfileView(customer) {
     html += '  </div>';
     html += '</div>';
 
-    // === Memory Card ===
+    // === 本次分析聊天记录 ===
+    if (latestAnalysis) {
+        const chatText = latestAnalysis.chat || latestAnalysis.inputPreview || '';
+        const chatLines = chatText.split('\n');
+        const previewLines = chatLines.slice(0, 4).join('\n');
+        const hasMore = chatLines.length > 4;
+
+        html += '<div class="crm-section">';
+        html += '  <h3 class="crm-section-title">本次分析聊天记录 <span class="crm-analysis-date">' + (latestAnalysis.date || '') + '</span></h3>';
+        if (chatText) {
+            html += '  <div class="crm-chat-record" id="chatRecordBox">';
+            html += '    <div class="crm-chat-preview" id="chatPreview">' + escapeHtml(previewLines) + (hasMore ? '\n...' : '') + '</div>';
+            if (hasMore) {
+                html += '    <div class="crm-chat-full" id="chatFull" style="display:none;">' + escapeHtml(chatText) + '</div>';
+            }
+            html += '    <div class="crm-chat-actions">';
+            if (hasMore) {
+                html += '      <button class="crm-chat-toggle" id="chatToggleBtn">展开全部</button>';
+            }
+            html += '      <button class="crm-chat-copy" id="chatCopyBtn">复制</button>';
+            html += '    </div>';
+            html += '  </div>';
+        } else {
+            html += '  <p class="crm-empty-hint">暂无聊天记录（旧版数据未保存完整聊天内容）</p>';
+        }
+        html += '</div>';
+    }
+
+    // === 销售补充信息 ===
+    if (latestAnalysis) {
+        const notesText = latestAnalysis.salesNotes || '';
+        html += '<div class="crm-section">';
+        html += '  <h3 class="crm-section-title">销售补充信息</h3>';
+        if (notesText) {
+            html += '  <div class="crm-notes-content">' + escapeHtml(notesText) + '</div>';
+        } else {
+            html += '  <p class="crm-empty-hint">本次分析未填写补充信息</p>';
+        }
+        html += '</div>';
+    }
+
+    // === 本次分析目标 ===
+    if (latestAnalysis) {
+        const focusText = latestAnalysis.focusQuestion || '';
+        html += '<div class="crm-section">';
+        html += '  <h3 class="crm-section-title">本次分析目标</h3>';
+        if (focusText) {
+            const focusLines = focusText.split('\n').filter(l => l.trim());
+            html += '  <div class="crm-focus-content">';
+            for (const line of focusLines) {
+                html += '    <div class="crm-focus-item">' + escapeHtml(line) + '</div>';
+            }
+            html += '  </div>';
+        } else {
+            html += '  <p class="crm-empty-hint">本次分析未选择目标</p>';
+        }
+        html += '</div>';
+    }
+
+    // === AI 分析结果 ===
+    if (latestAnalysis && latestAnalysis.result) {
+        html += '<div class="crm-section">';
+        html += '  <h3 class="crm-section-title">AI 分析结果 <span class="crm-analysis-date">' + escapeHtml(latestAnalysis.date || '') + ' / ' + escapeHtml(latestAnalysis.type === 'incremental' ? '增量' : '首次') + '</span></h3>';
+        html += '  <div class="crm-analysis-content" id="profileAnalysisContainer"></div>';
+        html += '  <div class="crm-export-section">';
+        html += '    <button class="export-btn" id="profileExportBtn">导出</button>';
+        html += '    <button class="export-btn" id="profileCopyBtn">复制全部</button>';
+        html += '  </div>';
+        html += '</div>';
+    }
+
+    // === 客户智能档案 ===
     html += '<div class="crm-section">';
     html += '  <h3 class="crm-section-title">客户智能档案</h3>';
     html += '  <div class="crm-card-content">';
@@ -543,42 +628,56 @@ function renderProfileView(customer) {
         html += '</div>';
     }
 
-    // If card is empty (e.g. old customer without card)
     if (CARD_SECTIONS.every(s => s.fields.every(f => !card[f]))) {
-        html += '<p style="color:var(--text-muted);font-size:13px;padding:16px 0;">暂无档案数据，分析一段聊天记录后会自动生成。</p>';
+        html += '<p class="crm-empty-hint">暂无档案数据，分析一段聊天记录后会自动生成。</p>';
     }
 
     html += '  </div>';
     html += '</div>';
 
-    // === Latest Analysis ===
-    if (latestAnalysis && latestAnalysis.result) {
-        html += '<div class="crm-section">';
-        html += '  <h3 class="crm-section-title">最新分析结果 <span class="crm-analysis-date">' + escapeHtml(latestAnalysis.date || '') + ' / ' + escapeHtml(latestAnalysis.type === 'incremental' ? '增量' : '首次') + '</span></h3>';
-        html += '  <div class="crm-analysis-content" id="profileAnalysisContainer"></div>';
-        html += '  <div class="crm-export-section">';
-        html += '    <button class="export-btn" id="profileExportBtn">导出</button>';
-        html += '    <button class="export-btn" id="profileCopyBtn">复制全部</button>';
-        html += '  </div>';
-        html += '</div>';
-    }
-
-    // === Timeline ===
+    // === 历史沟通时间线 ===
     if (timeline.length > 0) {
         html += '<div class="crm-section">';
-        html += '  <h3 class="crm-section-title">沟通时间线</h3>';
+        html += '  <h3 class="crm-section-title">历史沟通时间线 <span class="crm-analysis-date">' + timeline.length + ' 次分析</span></h3>';
         html += '  <div class="crm-timeline">';
 
         for (let i = timeline.length - 1; i >= 0; i--) {
             const entry = timeline[i];
             const isLatest = i === timeline.length - 1;
+            const analysisIdx = i;
+            const analysis = analyses[analysisIdx] || {};
+            const tlChat = analysis.chat || '';
+            const tlNotes = analysis.salesNotes || '';
+            const tlFocus = analysis.focusQuestion || '';
+
             html += '<div class="timeline-item' + (isLatest ? ' timeline-latest' : '') + '">';
             html += '  <div class="timeline-marker"></div>';
             html += '  <div class="timeline-body">';
-            html += '    <div class="timeline-date">' + escapeHtml(entry['日期'] || entry.date || '') + '</div>';
+            html += '    <div class="timeline-date">第 ' + (i + 1) + ' 次分析 · ' + escapeHtml(entry['日期'] || entry.date || '') + '</div>';
             html += '    <div class="timeline-event">' + escapeHtml(entry['事件'] || entry.event || '') + '</div>';
             html += '    <div class="timeline-judgment"><span class="timeline-tag">判断</span>' + escapeHtml(entry['判断'] || entry.judgment || '') + '</div>';
             html += '    <div class="timeline-advice"><span class="timeline-tag timeline-tag-blue">建议</span>' + escapeHtml(entry['建议'] || entry.advice || '') + '</div>';
+
+            // Collapsible chat record for this timeline entry
+            if (tlChat) {
+                var tlChatLines = tlChat.split('\n');
+                var tlPreview = tlChatLines.slice(0, 3).join('\n');
+                var tlHasMore = tlChatLines.length > 3;
+                var tlId = 'tlChat_' + i;
+                html += '    <div class="tl-chat-section">';
+                html += '      <button class="tl-chat-toggle" data-tl-id="' + tlId + '">查看本次聊天记录</button>';
+                html += '      <div class="tl-chat-content" id="' + tlId + '" style="display:none;">';
+                html += '        <pre class="tl-chat-text">' + escapeHtml(tlChat) + '</pre>';
+                if (tlNotes) {
+                    html += '        <div class="tl-chat-notes"><span class="tl-notes-label">补充信息：</span>' + escapeHtml(tlNotes) + '</div>';
+                }
+                if (tlFocus) {
+                    html += '        <div class="tl-chat-notes"><span class="tl-notes-label">分析目标：</span>' + escapeHtml(tlFocus) + '</div>';
+                }
+                html += '      </div>';
+                html += '    </div>';
+            }
+
             html += '  </div>';
             html += '</div>';
         }
@@ -595,12 +694,51 @@ function renderProfileView(customer) {
         if (analysisContainer) {
             renderAnalysisSections(latestAnalysis.result, analysisContainer);
         }
-        // Bind export
         $('profileExportBtn')?.addEventListener('click', () => exportResults(latestAnalysis.result));
         $('profileCopyBtn')?.addEventListener('click', () => {
             navigator.clipboard.writeText(latestAnalysis.result).then(() => showToast('已复制'));
         });
     }
+
+    // Bind chat record toggle (latest analysis)
+    $('chatToggleBtn')?.addEventListener('click', () => {
+        const preview = $('chatPreview');
+        const full = $('chatFull');
+        const btn = $('chatToggleBtn');
+        if (!preview || !full || !btn) return;
+        if (full.style.display === 'none') {
+            preview.style.display = 'none';
+            full.style.display = 'block';
+            btn.textContent = '收起';
+        } else {
+            preview.style.display = 'block';
+            full.style.display = 'none';
+            btn.textContent = '展开全部';
+        }
+    });
+
+    $('chatCopyBtn')?.addEventListener('click', () => {
+        const chatText = (latestAnalysis && latestAnalysis.chat) || '';
+        if (chatText) {
+            navigator.clipboard.writeText(chatText).then(() => showToast('聊天记录已复制'));
+        }
+    });
+
+    // Bind timeline chat toggles
+    document.querySelectorAll('.tl-chat-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tlId = btn.dataset.tlId;
+            const content = document.getElementById(tlId);
+            if (!content) return;
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                btn.textContent = '收起本次聊天记录';
+            } else {
+                content.style.display = 'none';
+                btn.textContent = '查看本次聊天记录';
+            }
+        });
+    });
 
     // Bind continue button
     $('profileContinueBtn')?.addEventListener('click', () => {
@@ -619,7 +757,6 @@ function renderProfileView(customer) {
             customer.name = newName;
             saveCustomer(customer);
             showToast('客户名称已更新');
-            // Update follow-up banner if active
             if (state.currentCustomerId === customer.id) {
                 $('followupName').textContent = newName;
             }
@@ -628,7 +765,6 @@ function renderProfileView(customer) {
         }
     });
 
-    // Prevent enter key in editable name (use blur instead)
     $('crmCustomerName')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -653,10 +789,10 @@ function startFollowUp(customerId) {
     analyzeBtn.innerHTML =
         '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>增量分析';
 
-    // Do NOT clear chat input - keep existing content for reference
-    // User can append new chat or clear manually
-    chatInput.placeholder = '在此粘贴该客户的最新聊天记录...\n\n系统会基于客户记忆卡片进行增量分析\n你也可以在原有聊天后面追加新内容';
-    analyzeBtn.disabled = chatInput.value.trim().length < 5;
+    // Clear input box - previous analysis chat is saved in customer profile
+    clearInputs();
+    chatInput.placeholder = '在此粘贴该客户的最新聊天记录...\n\n系统会基于客户记忆卡片进行增量分析\n上一次分析的聊天记录已保存在右侧客户档案中';
+    analyzeBtn.disabled = true;
 
     // Keep showing profile view (or show it if not visible)
     if (state.currentProfileId !== customerId) {
@@ -683,7 +819,9 @@ function exitToNewCustomer() {
     analyzeBtn.innerHTML =
         '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>开始分析';
 
-    chatInput.placeholder = '把微信/邮件聊天记录粘贴在这里\n\n格式示例：\n客户：你们的SEO怎么做？\n我：我们是专门做Google优化的...\n客户：多少钱？\n我：...\n\n分析完成后聊天记录不会清空，方便你对照查看';
+    // Clear all inputs - previous analysis data is saved in customer profiles
+    clearInputs();
+    chatInput.placeholder = '把微信/邮件聊天记录粘贴在这里\n\n格式示例：\n客户：你们的SEO怎么做？\n我：我们是专门做Google优化的...\n客户：多少钱？\n我：...\n\n分析完成后聊天记录会自动保存到客户档案，输入框会清空方便下次使用';
 
     setView('empty');
     const emptyH3 = $('emptyState').querySelector('h3');
@@ -850,6 +988,9 @@ async function analyze(input, mode) {
                 customer.analyses.push({
                     date: new Date().toLocaleString('zh-CN'),
                     type: 'incremental',
+                    chat: input,
+                    salesNotes: salesNotes,
+                    focusQuestion: focusQuestion,
                     inputPreview: input.substring(0, 200),
                     result: displayText
                 });
@@ -861,6 +1002,9 @@ async function analyze(input, mode) {
 
                 // Show updated profile view
                 showProfileView(state.currentCustomerId);
+
+                // Clear input box - chat record is saved in customer profile
+                clearInputs();
             } else {
                 // ===== Create new customer =====
                 const name = generateCustomerName(card);
@@ -875,6 +1019,9 @@ async function analyze(input, mode) {
                     analyses: [{
                         date: new Date().toLocaleString('zh-CN'),
                         type: 'first',
+                        chat: input,
+                        salesNotes: salesNotes,
+                        focusQuestion: focusQuestion,
                         inputPreview: input.substring(0, 200),
                         result: displayText
                     }]
@@ -888,10 +1035,13 @@ async function analyze(input, mode) {
                 $('followupName').textContent = name;
                 analyzeBtn.innerHTML =
                     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-4"/><polyline points="9 7 12 4 15 7"/><line x1="12" y1="4" x2="12" y2="16"/></svg>增量分析';
-                chatInput.placeholder = '在此粘贴该客户的最新聊天记录...\n\n系统会基于客户记忆卡片进行增量分析\n你也可以在原有聊天后面追加新内容';
+                chatInput.placeholder = '在此粘贴该客户的最新聊天记录...\n\n系统会基于客户记忆卡片进行增量分析\n上一次分析的聊天记录已保存在右侧客户档案中';
 
                 showToast('客户档案已创建');
                 showProfileView(customer.id);
+
+                // Clear input box - chat record is saved in customer profile
+                clearInputs();
             }
         } else {
             // Quick question mode
