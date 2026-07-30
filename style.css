@@ -528,6 +528,7 @@ textarea::placeholder { color: var(--text-muted); }
 .card-badge.green { background: var(--success-light); color: var(--success); }
 .card-badge.teal { background: #ccfbf1; color: #0d9488; }
 .card-badge.indigo { background: #e0e7ff; color: #4f46e5; }
+.card-badge.emerald { background: #d1fae5; color: #047857; }
 
 .result-card-body {
     color: var(--text);
@@ -1640,5 +1641,349 @@ textarea::placeholder { color: var(--text-muted); }
     }
     .tl-chat-text {
         font-size: 11px;
+    }
+}
+
+/* ===== Knowledge Center ===== */
+.modal-xl {
+    max-width: 1100px;
+    width: 95vw;
+    max-height: 92vh;
+}
+
+.knowledge-overlay .modal {
+    display: flex;
+    flex-direction: column;
+}
+
+.knowledge-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+}
+
+.knowledge-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.knowledge-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.kb-search {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    outline: none;
+}
+
+.kb-search:focus {
+    border-color: var(--primary);
+}
+
+.kb-category-filter {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+}
+
+.knowledge-count {
+    font-size: 13px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+#knowledgeList {
+    overflow-y: auto;
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 12px;
+    padding: 4px 0;
+}
+
+.knowledge-empty {
+    grid-column: 1 / -1;
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.kb-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+}
+
+.kb-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.kb-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.kb-category {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.kb-cat-建站 { background: #dbeafe; color: #1e40af; }
+.kb-cat-广告 { background: #fed7aa; color: #c2410c; }
+.kb-cat-社媒 { background: #fce7f3; color: #be185d; }
+.kb-cat-整合 { background: #ddd6fe; color: #6d28d9; }
+.kb-cat-B2C { background: #d1fae5; color: #047857; }
+.kb-cat-AI { background: #fef3c7; color: #b45309; }
+.kb-cat-其他 { background: #e5e7eb; color: #4b5563; }
+
+.kb-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+}
+
+.kb-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+
+.kb-target {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.kb-features {
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg-secondary);
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    line-height: 1.5;
+    flex: 1;
+}
+
+.kb-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.kb-tag {
+    padding: 2px 6px;
+    background: #f3f4f6;
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.kb-actions {
+    display: flex;
+    gap: 6px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+}
+
+.kb-btn {
+    flex: 1;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+}
+
+.kb-btn-edit:hover {
+    background: var(--primary-lighter);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.kb-btn-delete:hover {
+    background: var(--danger-light);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.knowledge-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    margin-top: 12px;
+}
+
+.knowledge-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: #eff6ff;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* ===== Knowledge Form ===== */
+.kb-form {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.kb-form label {
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.form-hint {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+.kb-form input,
+.kb-form select,
+.kb-form textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.kb-form input:focus,
+.kb-form select:focus,
+.kb-form textarea:focus {
+    border-color: var(--primary);
+}
+
+.kb-form textarea {
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.form-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-col label {
+    margin-top: 12px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+/* ===== Product Matching Section (Result Card) ===== */
+.product-matching-card {
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%);
+    border: 1px solid #86efac;
+}
+
+.product-matching-card .card-badge.emerald {
+    font-size: 14px;
+    padding: 6px 14px;
+    font-weight: 700;
+}
+
+.pm-fields {
+    padding: 12px 16px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pm-field {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+}
+
+.pm-field-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pm-icon {
+    font-size: 14px;
+}
+
+.pm-field-value {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+}
+
+/* ===== Knowledge Center Responsive ===== */
+@media (max-width: 768px) {
+    #knowledgeList {
+        grid-template-columns: 1fr;
+    }
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    .knowledge-toolbar {
+        flex-wrap: wrap;
+    }
+    .kb-search {
+        flex: 1 1 100%;
     }
 }

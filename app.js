@@ -13,8 +13,12 @@ const state = {
     customers: JSON.parse(localStorage.getItem('salesCustomers') || '[]'),
     currentCustomerId: null,
     isFollowUpMode: false,
-    currentProfileId: null
+    currentProfileId: null,
+    knowledgeBase: null  // 初始化为空，getKnowledgeBase() 会从 localStorage 读取或导入默认
 };
+
+// 启动时初始化知识中心
+state.knowledgeBase = getKnowledgeBase();
 
 // ===== API Config =====
 const API_CONFIGS = {
@@ -95,6 +99,7 @@ function setView(view) {
 
 // ===== Customer Profile Management =====
 const CUSTOMERS_KEY = 'salesCustomers';
+const KNOWLEDGE_KEY = 'reanodKnowledgeBase';
 
 function getCustomers() {
     return JSON.parse(localStorage.getItem(CUSTOMERS_KEY) || '[]');
@@ -111,6 +116,124 @@ function saveCustomer(customer) {
     if (idx >= 0) customers[idx] = customer;
     else customers.unshift(customer);
     saveCustomers(customers);
+}
+
+// ===== Knowledge Center Management =====
+// 知识中心：存储所有产品/套餐资料，支持增删改
+// 默认数据来自 knowledge.js 的 DEFAULT_KNOWLEDGE_BASE
+
+function getKnowledgeBase() {
+    const raw = localStorage.getItem(KNOWLEDGE_KEY);
+    if (!raw) {
+        // 首次加载：导入默认数据
+        const defaults = (window.DEFAULT_KNOWLEDGE_BASE || []).slice();
+        localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify(defaults));
+        return defaults;
+    }
+    try {
+        return JSON.parse(raw);
+    } catch (e) {
+        return (window.DEFAULT_KNOWLEDGE_BASE || []).slice();
+    }
+}
+
+function saveKnowledgeBase(kb) {
+    localStorage.setItem(KNOWLEDGE_KEY, JSON.stringify(kb));
+    state.knowledgeBase = kb;
+}
+
+function resetKnowledgeBase() {
+    const defaults = (window.DEFAULT_KNOWLEDGE_BASE || []).slice();
+    saveKnowledgeBase(defaults);
+    return defaults;
+}
+
+function addKnowledgeEntry(entry) {
+    const kb = getKnowledgeBase();
+    entry.id = 'kb_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    kb.unshift(entry);
+    saveKnowledgeBase(kb);
+    return entry;
+}
+
+function updateKnowledgeEntry(id, updates) {
+    const kb = getKnowledgeBase();
+    const idx = kb.findIndex(e => e.id === id);
+    if (idx >= 0) {
+        kb[idx] = { ...kb[idx], ...updates };
+        saveKnowledgeBase(kb);
+        return kb[idx];
+    }
+    return null;
+}
+
+function deleteKnowledgeEntry(id) {
+    const kb = getKnowledgeBase().filter(e => e.id !== id);
+    saveKnowledgeBase(kb);
+}
+
+// 智能匹配：根据聊天文本返回相关产品（按相关度排序）
+function getRelevantKnowledge(text, maxResults = 5) {
+    if (!text || text.length < 5) return [];
+    const kb = getKnowledgeBase();
+    const lowerText = text.toLowerCase();
+
+    const scored = kb.map(entry => {
+        let score = 0;
+        const keywords = entry.keywords || [];
+        for (const kw of keywords) {
+            if (!kw) continue;
+            const lowerKw = kw.toLowerCase();
+            if (lowerText.includes(lowerKw)) {
+                score += 1;
+                // 完全匹配额外加分
+                if (lowerText.split(/\s+/).some(w => w === lowerKw)) score += 0.5;
+            }
+        }
+        return { entry, score };
+    });
+
+    return scored
+        .filter(s => s.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, maxResults)
+        .map(s => s.entry);
+}
+
+// 构建知识上下文：精简目录 + 匹配到的详细产品
+function buildKnowledgeContext(text) {
+    const kb = getKnowledgeBase();
+    if (!kb || kb.length === 0) return '';
+
+    const matched = getRelevantKnowledge(text, 5);
+
+    // 精简目录（所有产品：分类+名称+价格）
+    const catalog = kb.map(e => {
+        return `- [${e.category}] ${e.name} - ${e.priceDisplay}`;
+    }).join('\n');
+
+    let context = '# 公司产品知识中心（完整目录）\n\n';
+    context += catalog + '\n';
+
+    if (matched.length > 0) {
+        context += '\n---\n\n# 本次聊天匹配到的产品详细资料\n\n';
+        context += '（以下产品是根据客户聊天内容匹配到的最相关产品，请重点参考这些进行推荐）\n\n';
+        matched.forEach((e, i) => {
+            context += `## ${i + 1}. ${e.name} (${e.priceDisplay})\n`;
+            context += `分类：${e.category}\n`;
+            context += `目标客户：${e.targetCustomer || '未填写'}\n`;
+            context += `价格详情：${e.priceDetail || '未填写'}\n`;
+            context += `核心功能：\n`;
+            const features = e.features || [];
+            features.forEach(f => context += `- ${f}\n`);
+            context += `产品描述：${e.description || ''}\n`;
+            if (e.bestFor) context += `最适合：${e.bestFor}\n`;
+            if (e.notSuitable) context += `不适合：${e.notSuitable}\n`;
+            context += '\n';
+        });
+    }
+
+    return context;
 }
 
 function deleteCustomer(id) {
@@ -927,6 +1050,11 @@ async function analyze(input, mode) {
     // Build supplementary context string
     let supplement = '';
     if (context) supplement += context + '\n';
+
+    // 注入产品知识中心（v2.5）
+    const knowledgeCtx = buildKnowledgeContext(input + ' ' + (salesNotes || '') + ' ' + (focusQuestion || ''));
+    if (knowledgeCtx) supplement += knowledgeCtx + '\n';
+
     if (salesNotes) supplement += '# 销售补充信息\n' + salesNotes + '\n';
     if (focusQuestion) supplement += '# 本次希望AI帮我解决什么\n' + focusQuestion + '\n';
 
@@ -1273,7 +1401,8 @@ function renderSection(section) {
         '聊天评分': { class: 'amber' },
         '最佳回复方案': { class: 'green' },
         '发送节奏': { class: 'teal' },
-        '后续建议': { class: 'indigo' }
+        '后续建议': { class: 'indigo' },
+        '产品匹配建议': { class: 'emerald' }
     };
 
     const incrementalMap = {
@@ -1284,7 +1413,8 @@ function renderSection(section) {
         '下一句话怎么回复': { class: 'green' },
         '后续跟进建议': { class: 'indigo' },
         '风险提醒': { class: 'red' },
-        '针对问题回答': { class: 'indigo' }
+        '针对问题回答': { class: 'indigo' },
+        '产品匹配建议': { class: 'emerald' }
     };
 
     const badge = firstAnalysisMap[title] || incrementalMap[title] || { class: 'blue' };
@@ -1301,11 +1431,65 @@ function renderSection(section) {
         return renderSuggestionSection(content, badge, title);
     }
 
+    if (title === '产品匹配建议') {
+        return renderProductMatchingSection(content, badge, title);
+    }
+
     return '<div class="result-card">' +
         '<div class="result-card-header">' +
             '<span class="card-badge ' + badge.class + '">' + escapeHtml(title) + '</span>' +
         '</div>' +
         '<div class="result-card-body">' + renderMarkdown(content) + '</div>' +
+    '</div>';
+}
+
+// ===== Render Product Matching Section =====
+function renderProductMatchingSection(content, badge, title) {
+    // 解析每个字段
+    const fieldLabels = [
+        '推荐产品',
+        '推荐套餐',
+        '推荐原因',
+        '参考报价',
+        '套餐区别',
+        '是否适合升级方案',
+        '组合销售建议',
+        '推荐成交方式',
+        '客户最可能关心',
+        '销售应该如何介绍'
+    ];
+
+    const fieldIcons = {
+        '推荐产品': '🎯',
+        '推荐套餐': '📦',
+        '推荐原因': '💡',
+        '参考报价': '💰',
+        '套餐区别': '🔍',
+        '是否适合升级方案': '⬆️',
+        '组合销售建议': '🔗',
+        '推荐成交方式': '🚀',
+        '客户最可能关心': '❓',
+        '销售应该如何介绍': '🎤'
+    };
+
+    const fieldHtml = fieldLabels.map(function(label) {
+        const regex = new RegExp(label + '[：:]\\s*([\\s\\S]*?)(?=' + fieldLabels.filter(function(l) { return l !== label; }).join('[：:]|$|') + '[：:]|$)');
+        const m = content.match(regex);
+        if (!m) return '';
+        const value = m[1].trim();
+        if (!value) return '';
+        const icon = fieldIcons[label] || '•';
+        return '<div class="pm-field">' +
+            '<div class="pm-field-label"><span class="pm-icon">' + icon + '</span>' + escapeHtml(label) + '</div>' +
+            '<div class="pm-field-value">' + renderMarkdown(value) + '</div>' +
+        '</div>';
+    }).join('');
+
+    return '<div class="result-card product-matching-card">' +
+        '<div class="result-card-header">' +
+            '<span class="card-badge ' + badge.class + '">🎁 ' + escapeHtml(title) + '</span>' +
+        '</div>' +
+        '<div class="pm-fields">' + fieldHtml + '</div>' +
     '</div>';
 }
 
@@ -1483,6 +1667,204 @@ if (!hasApiKey()) {
 }
 
 // Close modals on overlay click
+// ===== Knowledge Center Management UI =====
+
+const KNOWLEDGE_CATEGORIES_UI = ['建站', '广告', '社媒', '整合', 'B2C', 'AI', '其他'];
+
+function openKnowledgeCenter() {
+    $('knowledgePanel').style.display = 'flex';
+    renderKnowledgeList();
+}
+
+function closeKnowledgeCenter() {
+    $('knowledgePanel').style.display = 'none';
+}
+
+function renderKnowledgeList(filterCategory, keyword) {
+    filterCategory = filterCategory || 'all';
+    keyword = (keyword || '').toLowerCase().trim();
+    const kb = getKnowledgeBase();
+    let filtered = kb;
+    if (filterCategory !== 'all') {
+        filtered = filtered.filter(function(e) { return e.category === filterCategory; });
+    }
+    if (keyword) {
+        filtered = filtered.filter(function(e) {
+            return (e.name && e.name.toLowerCase().includes(keyword))
+                || (e.shortName && e.shortName.toLowerCase().includes(keyword))
+                || (e.targetCustomer && e.targetCustomer.toLowerCase().includes(keyword))
+                || (e.description && e.description.toLowerCase().includes(keyword));
+        });
+    }
+
+    const listEl = $('knowledgeList');
+    const countEl = $('knowledgeCount');
+    if (countEl) countEl.textContent = '共 ' + kb.length + ' 条产品' + (filtered.length !== kb.length ? '（已筛选 ' + filtered.length + ' 条）' : '');
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = '<div class="knowledge-empty">没有匹配的产品。<br>点击右上角「+ 新增产品」添加，或换一个筛选条件试试。</div>';
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(function(e) {
+        const keywords = (e.keywords || []).slice(0, 6).map(function(k) { return '<span class="kb-tag">' + escapeHtml(k) + '</span>'; }).join('');
+        return '<div class="kb-card">' +
+            '<div class="kb-card-header">' +
+                '<span class="kb-category kb-cat-' + escapeHtml(e.category) + '">' + escapeHtml(e.category) + '</span>' +
+                '<span class="kb-name">' + escapeHtml(e.name) + '</span>' +
+            '</div>' +
+            '<div class="kb-price">' + escapeHtml(e.priceDisplay || '') + '</div>' +
+            '<div class="kb-target">🎯 ' + escapeHtml(e.targetCustomer || '') + '</div>' +
+            (e.features && e.features.length > 0 ? '<div class="kb-features">' + escapeHtml(e.features.slice(0, 3).join(' · ')) + '</div>' : '') +
+            '<div class="kb-keywords">' + keywords + '</div>' +
+            '<div class="kb-actions">' +
+                '<button class="kb-btn kb-btn-edit" data-id="' + escapeAttr(e.id) + '">编辑</button>' +
+                '<button class="kb-btn kb-btn-delete" data-id="' + escapeAttr(e.id) + '">删除</button>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+
+    // 绑定编辑/删除按钮
+    listEl.querySelectorAll('.kb-btn-edit').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            openKnowledgeForm(btn.getAttribute('data-id'));
+        });
+    });
+    listEl.querySelectorAll('.kb-btn-delete').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = btn.getAttribute('data-id');
+            const entry = getKnowledgeBase().find(function(e) { return e.id === id; });
+            if (!entry) return;
+            if (!confirm('确定要删除「' + entry.name + '」吗？')) return;
+            deleteKnowledgeEntry(id);
+            renderKnowledgeList($('kbCategoryFilter').value, $('kbSearchInput').value);
+            showToast('已删除');
+        });
+    });
+}
+
+function openKnowledgeForm(editId) {
+    const modal = $('knowledgeFormModal');
+    const titleEl = $('knowledgeFormTitle');
+    const form = $('knowledgeForm');
+    form.reset();
+    $('kbFormId').value = '';
+
+    if (editId) {
+        const entry = getKnowledgeBase().find(function(e) { return e.id === editId; });
+        if (!entry) return;
+        titleEl.textContent = '编辑产品';
+        $('kbFormId').value = entry.id;
+        $('kbFormCategory').value = entry.category || '建站';
+        $('kbFormName').value = entry.name || '';
+        $('kbFormPriceDisplay').value = entry.priceDisplay || '';
+        $('kbFormPriceDetail').value = entry.priceDetail || '';
+        $('kbFormPriceType').value = entry.priceType || 'fixed';
+        $('kbFormKeywords').value = (entry.keywords || []).join(', ');
+        $('kbFormTarget').value = entry.targetCustomer || '';
+        $('kbFormFeatures').value = (entry.features || []).join('\n');
+        $('kbFormDescription').value = entry.description || '';
+        $('kbFormBestFor').value = entry.bestFor || '';
+        $('kbFormNotSuitable').value = entry.notSuitable || '';
+    } else {
+        titleEl.textContent = '新增产品';
+        $('kbFormCategory').value = '建站';
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeKnowledgeForm() {
+    $('knowledgeFormModal').style.display = 'none';
+}
+
+function saveKnowledgeForm(e) {
+    if (e) e.preventDefault();
+    const id = $('kbFormId').value;
+    const entry = {
+        category: $('kbFormCategory').value,
+        name: $('kbFormName').value.trim(),
+        shortName: $('kbFormName').value.trim(),
+        price: $('kbFormPriceDisplay').value.replace(/[^\d-]/g, ''),
+        priceDisplay: $('kbFormPriceDisplay').value.trim(),
+        priceType: $('kbFormPriceType').value,
+        priceDetail: $('kbFormPriceDetail').value.trim(),
+        keywords: $('kbFormKeywords').value.split(/[,，]/).map(function(s) { return s.trim(); }).filter(Boolean),
+        targetCustomer: $('kbFormTarget').value.trim(),
+        features: $('kbFormFeatures').value.split('\n').map(function(s) { return s.trim(); }).filter(Boolean),
+        description: $('kbFormDescription').value.trim(),
+        bestFor: $('kbFormBestFor').value.trim(),
+        notSuitable: $('kbFormNotSuitable').value.trim()
+    };
+
+    if (!entry.name) {
+        showToast('请填写产品名称');
+        return;
+    }
+
+    if (id) {
+        updateKnowledgeEntry(id, entry);
+        showToast('已更新');
+    } else {
+        addKnowledgeEntry(entry);
+        showToast('已添加');
+    }
+
+    closeKnowledgeForm();
+    renderKnowledgeList($('kbCategoryFilter').value, $('kbSearchInput').value);
+}
+
+// 绑定知识中心 UI 事件
+document.addEventListener('DOMContentLoaded', function() {
+    const kbBtn = $('knowledgeCenterBtn');
+    if (kbBtn) {
+        kbBtn.addEventListener('click', openKnowledgeCenter);
+    }
+    const closeBtn = $('knowledgeCloseBtn');
+    if (closeBtn) closeBtn.addEventListener('click', closeKnowledgeCenter);
+
+    const catFilter = $('kbCategoryFilter');
+    if (catFilter) {
+        catFilter.addEventListener('change', function() {
+            renderKnowledgeList(catFilter.value, $('kbSearchInput').value);
+        });
+    }
+    const searchInput = $('kbSearchInput');
+    if (searchInput) {
+        let timer;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timer);
+            timer = setTimeout(function() {
+                renderKnowledgeList($('kbCategoryFilter').value, searchInput.value);
+            }, 200);
+        });
+    }
+
+    const addBtn = $('kbAddBtn');
+    if (addBtn) addBtn.addEventListener('click', function() { openKnowledgeForm(null); });
+
+    const resetBtn = $('kbResetBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (!confirm('确定要恢复默认知识库吗？这会覆盖您当前的修改。')) return;
+            resetKnowledgeBase();
+            renderKnowledgeList('all', '');
+            showToast('已恢复默认');
+        });
+    }
+
+    const formClose = $('knowledgeFormClose');
+    if (formClose) formClose.addEventListener('click', closeKnowledgeForm);
+
+    const form = $('knowledgeForm');
+    if (form) form.addEventListener('submit', saveKnowledgeForm);
+
+    const cancelBtn = $('kbFormCancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', closeKnowledgeForm);
+});
+
+// ===== End Knowledge Center Management =====
+
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) overlay.style.display = 'none';

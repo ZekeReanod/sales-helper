@@ -23,6 +23,10 @@
         <span class="subtitle">REANOD 销售赋能工具</span>
     </div>
     <div class="header-right">
+        <button id="knowledgeCenterBtn" class="header-btn" title="产品知识中心">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <span>知识中心</span>
+        </button>
         <button id="customerBtn" class="header-btn" title="客户档案">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <span>客户档案</span>
@@ -306,10 +310,116 @@
     </div>
 </div>
 
+<!-- ============ Knowledge Center Panel ============ -->
+<div class="modal-overlay knowledge-overlay" id="knowledgePanel" style="display:none">
+    <div class="modal modal-xl">
+        <div class="modal-header knowledge-header">
+            <h2>📚 产品知识中心</h2>
+            <div class="knowledge-header-actions">
+                <button id="kbResetBtn" class="text-btn">恢复默认</button>
+                <button id="kbAddBtn" class="primary-btn">+ 新增产品</button>
+                <button class="modal-close" id="knowledgeCloseBtn">×</button>
+            </div>
+        </div>
+        <div class="knowledge-toolbar">
+            <input type="text" id="kbSearchInput" class="kb-search" placeholder="搜索产品名称、关键词、客户类型...">
+            <select id="kbCategoryFilter" class="kb-category-filter">
+                <option value="all">全部分类</option>
+                <option value="建站">建站</option>
+                <option value="广告">广告</option>
+                <option value="社媒">社媒</option>
+                <option value="整合">整合营销</option>
+                <option value="B2C">B2C</option>
+                <option value="AI">AI</option>
+                <option value="其他">其他</option>
+            </select>
+            <span id="knowledgeCount" class="knowledge-count">共 0 条产品</span>
+        </div>
+        <div class="modal-body" id="knowledgeList">
+            <!-- 知识库卡片列表 -->
+        </div>
+        <div class="knowledge-footer">
+            <p class="knowledge-hint">💡 AI 在每次分析时会自动调用知识中心，按客户聊天内容智能匹配最相关的产品，并在【产品匹配建议】区块给出推荐。</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============ Knowledge Form Modal ============ -->
+<div class="modal-overlay" id="knowledgeFormModal" style="display:none">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2 id="knowledgeFormTitle">新增产品</h2>
+            <button class="modal-close" id="knowledgeFormClose">×</button>
+        </div>
+        <form id="knowledgeForm" class="modal-body kb-form">
+            <input type="hidden" id="kbFormId" value="">
+            <div class="form-row">
+                <div class="form-col">
+                    <label>分类 *</label>
+                    <select id="kbFormCategory" required>
+                        <option value="建站">建站</option>
+                        <option value="广告">广告</option>
+                        <option value="社媒">社媒</option>
+                        <option value="整合">整合营销</option>
+                        <option value="B2C">B2C</option>
+                        <option value="AI">AI</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="form-col">
+                    <label>价格类型</label>
+                    <select id="kbFormPriceType">
+                        <option value="fixed">固定价</option>
+                        <option value="tiered">阶梯价（多版本）</option>
+                        <option value="custom">定制价</option>
+                    </select>
+                </div>
+            </div>
+            <label>产品名称 *</label>
+            <input type="text" id="kbFormName" required placeholder="例如：PHP定制站-多语种">
+
+            <label>价格显示</label>
+            <input type="text" id="kbFormPriceDisplay" placeholder="例如：¥19,800 或 启航版 ¥9,800 / 品牌版 ¥13,800">
+
+            <label>价格详情</label>
+            <textarea id="kbFormPriceDetail" rows="2" placeholder="详细说明价格组成、阶梯、续费等"></textarea>
+
+            <label>触发关键词 * <span class="form-hint">（逗号分隔，用于智能匹配客户聊天内容）</span></label>
+            <input type="text" id="kbFormKeywords" required placeholder="例如：建站, 网站, 多语种, PHP, 独立站, B2B建站">
+
+            <label>目标客户</label>
+            <textarea id="kbFormTarget" rows="2" placeholder="这个产品适合什么样的客户？"></textarea>
+
+            <label>核心功能 <span class="form-hint">（一行一个）</span></label>
+            <textarea id="kbFormFeatures" rows="5" placeholder="功能1&#10;功能2&#10;功能3"></textarea>
+
+            <label>产品描述</label>
+            <textarea id="kbFormDescription" rows="4" placeholder="详细描述这个产品的特点、优势、适用场景"></textarea>
+
+            <div class="form-row">
+                <div class="form-col">
+                    <label>最适合</label>
+                    <input type="text" id="kbFormBestFor" placeholder="一句话概括适合谁">
+                </div>
+                <div class="form-col">
+                    <label>不适合</label>
+                    <input type="text" id="kbFormNotSuitable" placeholder="一句话概括不适合谁">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="secondary-btn" id="kbFormCancel">取消</button>
+                <button type="submit" class="primary-btn">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- ============ Toast ============ -->
 <div id="toast" class="toast" style="display:none"></div>
 
 <script src="prompt.js"></script>
+<script src="knowledge.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>
