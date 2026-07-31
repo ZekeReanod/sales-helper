@@ -17,6 +17,9 @@ const state = {
     knowledgeBase: null  // 初始化为空，getKnowledgeBase() 会从 localStorage 读取或导入默认
 };
 
+// 知识中心 localStorage key（必须在 getKnowledgeBase 调用前声明）
+const KNOWLEDGE_KEY = 'reanodKnowledgeBase';
+
 // 启动时初始化知识中心
 state.knowledgeBase = getKnowledgeBase();
 
@@ -99,7 +102,7 @@ function setView(view) {
 
 // ===== Customer Profile Management =====
 const CUSTOMERS_KEY = 'salesCustomers';
-const KNOWLEDGE_KEY = 'reanodKnowledgeBase';
+// KNOWLEDGE_KEY 已在文件顶部声明
 
 function getCustomers() {
     return JSON.parse(localStorage.getItem(CUSTOMERS_KEY) || '[]');
