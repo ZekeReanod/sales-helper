@@ -27,6 +27,10 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
             <span>知识中心</span>
         </button>
+        <button id="salesThinkingBtn" class="header-btn" title="销售思维知识库">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            <span>销售思维</span>
+        </button>
         <button id="customerBtn" class="header-btn" title="客户档案">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <span>客户档案</span>
@@ -181,7 +185,7 @@
                 </svg>
             </div>
             <h3>粘贴聊天记录，开始分析</h3>
-            <p>把客户微信/邮件聊天记录粘贴到左边，点击「开始分析」<br>系统会从客户心理、销售问题、话术建议等7个维度帮你拆解</p>
+            <p>把客户微信/邮件聊天记录粘贴到左边，点击「开始分析」<br>系统会调用销售思维知识库，从9个维度帮你深度拆解</p>
             <div class="feature-list">
                 <div class="feature-item">
                     <span class="feature-badge blue">心理</span>
@@ -211,10 +215,10 @@
                 <h3 id="loadingText">正在分析聊天记录...</h3>
                 <p class="loading-hint" id="loadingHint">AI正在从7个维度拆解这段对话</p>
                 <div class="loading-steps">
-                    <div class="loading-step" id="step1">分析客户画像</div>
-                    <div class="loading-step" id="step2">判断客户心理</div>
-                    <div class="loading-step" id="step3">找出销售问题</div>
-                    <div class="loading-step" id="step4">生成回复方案</div>
+                    <div class="loading-step" id="step1">调用销售思维知识库</div>
+                    <div class="loading-step" id="step2">判断客户心理阶段</div>
+                    <div class="loading-step" id="step3">匹配产品与服务</div>
+                    <div class="loading-step" id="step4">生成9维度策略</div>
                 </div>
             </div>
         </div>
@@ -415,11 +419,103 @@
     </div>
 </div>
 
+<!-- ============ Sales Thinking Knowledge Panel ============ -->
+<div class="modal-overlay knowledge-overlay" id="salesThinkingPanel" style="display:none">
+    <div class="modal modal-xl">
+        <div class="modal-header knowledge-header">
+            <h2>🧠 销售思维知识库</h2>
+            <div class="knowledge-header-actions">
+                <button id="stResetBtn" class="text-btn">恢复默认</button>
+                <button id="stAddBtn" class="primary-btn">+ 新增思维模型</button>
+                <button class="modal-close" id="stCloseBtn">×</button>
+            </div>
+        </div>
+        <div class="knowledge-toolbar">
+            <input type="text" id="stSearchInput" class="kb-search" placeholder="搜索标题、场景、关键词...">
+            <select id="stCategoryFilter" class="kb-category-filter">
+                <option value="all">全部分类</option>
+                <option value="客户判断模型">客户判断模型</option>
+                <option value="客户心理模型">客户心理模型</option>
+                <option value="沟通策略模型">沟通策略模型</option>
+                <option value="异议处理模型">异议处理模型</option>
+                <option value="成交推进模型">成交推进模型</option>
+                <option value="销售案例库">销售案例库</option>
+            </select>
+            <span id="stKnowledgeCount" class="knowledge-count">共 0 条知识</span>
+        </div>
+        <div class="modal-body" id="stKnowledgeList">
+            <!-- 销售思维知识库卡片列表 -->
+        </div>
+        <div class="knowledge-footer">
+            <p class="knowledge-hint">💡 AI 在每次分析时会先调用销售思维知识库，判断客户类型和心理阶段，再结合产品知识库生成策略。这是AI模拟资深销售思考方式的核心知识层。</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============ Sales Thinking Form Modal ============ -->
+<div class="modal-overlay" id="stFormModal" style="display:none">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h2 id="stFormTitle">新增销售思维知识</h2>
+            <button class="modal-close" id="stFormClose">×</button>
+        </div>
+        <form id="stForm" class="modal-body kb-form">
+            <input type="hidden" id="stFormId" value="">
+
+            <label>分类 *</label>
+            <select id="stFormCategory" required>
+                <option value="客户判断模型">客户判断模型</option>
+                <option value="客户心理模型">客户心理模型</option>
+                <option value="沟通策略模型">沟通策略模型</option>
+                <option value="异议处理模型">异议处理模型</option>
+                <option value="成交推进模型">成交推进模型</option>
+                <option value="销售案例库">销售案例库</option>
+            </select>
+
+            <label>标题 *</label>
+            <input type="text" id="stFormTitleInput" required placeholder="例如：价格敏感型客户的判断逻辑">
+
+            <label>适用场景</label>
+            <textarea id="stFormScenario" rows="2" placeholder="什么情况下适用这条知识？"></textarea>
+
+            <label>客户表现</label>
+            <textarea id="stFormBehavior" rows="2" placeholder="客户会有什么具体表现/说什么话？"></textarea>
+
+            <label>销售判断</label>
+            <textarea id="stFormJudgment" rows="2" placeholder="基于客户表现，销售应该做出什么判断？"></textarea>
+
+            <label>判断依据</label>
+            <textarea id="stFormBasis" rows="2" placeholder="为什么做出这个判断？依据是什么？"></textarea>
+
+            <label>错误做法</label>
+            <textarea id="stFormWrong" rows="2" placeholder="新手销售常犯的错误是什么？"></textarea>
+
+            <label>正确策略</label>
+            <textarea id="stFormCorrect" rows="3" placeholder="应该怎么做？正确的策略是什么？"></textarea>
+
+            <label>案例</label>
+            <textarea id="stFormCase" rows="3" placeholder="实际案例（可填真实经历）"></textarea>
+
+            <label>AI执行规则</label>
+            <textarea id="stFormAiRule" rows="2" placeholder="AI遇到这种情况应该怎么做？"></textarea>
+
+            <label>触发关键词 * <span class="form-hint">（逗号分隔，用于智能匹配客户聊天内容）</span></label>
+            <input type="text" id="stFormKeywords" required placeholder="例如：价格, 贵, 预算, 便宜, 性价比">
+
+            <div class="form-actions">
+                <button type="button" class="secondary-btn" id="stFormCancel">取消</button>
+                <button type="submit" class="primary-btn">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- ============ Toast ============ -->
 <div id="toast" class="toast" style="display:none"></div>
 
 <script src="prompt.js"></script>
 <script src="knowledge.js"></script>
+<script src="sales_thinking.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>

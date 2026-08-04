@@ -19,9 +19,11 @@ const state = {
 
 // 知识中心 localStorage key（必须在 getKnowledgeBase 调用前声明）
 const KNOWLEDGE_KEY = 'reanodKnowledgeBase';
+const SALES_THINKING_KEY = 'reanodSalesThinkingKB';
 
 // 启动时初始化知识中心
 state.knowledgeBase = getKnowledgeBase();
+state.salesThinkingKB = getSalesThinkingKB();
 
 // ===== API Config =====
 const API_CONFIGS = {
@@ -173,6 +175,121 @@ function updateKnowledgeEntry(id, updates) {
 function deleteKnowledgeEntry(id) {
     const kb = getKnowledgeBase().filter(e => e.id !== id);
     saveKnowledgeBase(kb);
+}
+
+// ===== Sales Thinking Knowledge Base Management =====
+// 销售思维知识库：存储销售专家的判断逻辑、心理模型、沟通策略等
+// 默认数据来自 sales_thinking.js 的 DEFAULT_SALES_THINKING_KB
+
+function getSalesThinkingKB() {
+    const raw = localStorage.getItem(SALES_THINKING_KEY);
+    if (!raw) {
+        const defaults = (window.DEFAULT_SALES_THINKING_KB || []).slice();
+        localStorage.setItem(SALES_THINKING_KEY, JSON.stringify(defaults));
+        return defaults;
+    }
+    try {
+        return JSON.parse(raw);
+    } catch (e) {
+        return (window.DEFAULT_SALES_THINKING_KB || []).slice();
+    }
+}
+
+function saveSalesThinkingKB(kb) {
+    localStorage.setItem(SALES_THINKING_KEY, JSON.stringify(kb));
+    state.salesThinkingKB = kb;
+}
+
+function resetSalesThinkingKB() {
+    const defaults = (window.DEFAULT_SALES_THINKING_KB || []).slice();
+    saveSalesThinkingKB(defaults);
+    return defaults;
+}
+
+function addSalesThinkingEntry(entry) {
+    const kb = getSalesThinkingKB();
+    entry.id = 'st_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    kb.unshift(entry);
+    saveSalesThinkingKB(kb);
+    return entry;
+}
+
+function updateSalesThinkingEntry(id, updates) {
+    const kb = getSalesThinkingKB();
+    const idx = kb.findIndex(e => e.id === id);
+    if (idx >= 0) {
+        kb[idx] = { ...kb[idx], ...updates };
+        saveSalesThinkingKB(kb);
+        return kb[idx];
+    }
+    return null;
+}
+
+function deleteSalesThinkingEntry(id) {
+    const kb = getSalesThinkingKB().filter(e => e.id !== id);
+    saveSalesThinkingKB(kb);
+}
+
+// 智能匹配：根据聊天文本返回相关的销售思维知识（按相关度排序）
+function getRelevantSalesThinking(text, maxResults = 8) {
+    if (!text || text.length < 5) return [];
+    const kb = getSalesThinkingKB();
+    const lowerText = text.toLowerCase();
+
+    const scored = kb.map(entry => {
+        let score = 0;
+        const keywords = entry.keywords || [];
+        for (const kw of keywords) {
+            if (!kw) continue;
+            const lowerKw = kw.toLowerCase();
+            if (lowerText.includes(lowerKw)) {
+                score += 1;
+                if (lowerText.split(/\s+/).some(w => w === lowerKw)) score += 0.5;
+            }
+        }
+        return { entry, score };
+    });
+
+    return scored
+        .filter(s => s.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, maxResults)
+        .map(s => s.entry);
+}
+
+// 构建销售思维知识上下文：目录 + 匹配到的详细知识
+function buildSalesThinkingContext(text) {
+    const kb = getSalesThinkingKB();
+    if (!kb || kb.length === 0) return '';
+
+    const matched = getRelevantSalesThinking(text, 8);
+
+    // 精简目录（所有知识：分类+标题）
+    const catalog = kb.map(e => {
+        return '- [' + e.category + '] ' + e.title;
+    }).join('\n');
+
+    let context = '# 销售思维知识库（完整目录）\n\n';
+    context += catalog + '\n';
+
+    if (matched.length > 0) {
+        context += '\n---\n\n# 本次聊天匹配到的销售思维知识（详细）\n\n';
+        context += '（以下知识是根据客户聊天内容匹配到的最相关思维模型，请在分析时参考这些判断逻辑）\n\n';
+        matched.forEach((e, i) => {
+            context += '## ' + (i + 1) + '. ' + e.title + ' [' + e.category + ']\n';
+            context += '适用场景：' + (e.scenario || '') + '\n';
+            context += '客户表现：' + (e.customerBehavior || '') + '\n';
+            context += '销售判断：' + (e.salesJudgment || '') + '\n';
+            context += '判断依据：' + (e.judgmentBasis || '') + '\n';
+            context += '错误做法：' + (e.wrongApproach || '') + '\n';
+            context += '正确策略：' + (e.correctStrategy || '') + '\n';
+            if (e.caseExample) context += '案例：' + e.caseExample + '\n';
+            if (e.aiRule) context += 'AI执行规则：' + e.aiRule + '\n';
+            context += '\n';
+        });
+    }
+
+    return context;
 }
 
 // 智能匹配：根据聊天文本返回相关产品（按相关度排序）
@@ -971,20 +1088,27 @@ $('copyPromptBtn').addEventListener('click', () => {
     const salesNotes = buildSalesNotes();
     const focusQuestion = buildFocusQuestion();
     const prompt = state.isFollowUpMode ? window.INCREMENTAL_PROMPT : window.SYSTEM_PROMPT;
+
+    // Build supplementary context (same as analyze function)
+    let supplement = '';
+    if (context) supplement += context + '\n';
+    const knowledgeCtx = buildKnowledgeContext(input + ' ' + (salesNotes || '') + ' ' + (focusQuestion || ''));
+    if (knowledgeCtx) supplement += knowledgeCtx + '\n';
+    const salesThinkingCtx = buildSalesThinkingContext(input + ' ' + (salesNotes || '') + ' ' + (focusQuestion || ''));
+    if (salesThinkingCtx) supplement += salesThinkingCtx + '\n';
+    if (salesNotes) supplement += '# 销售补充信息\n' + salesNotes + '\n';
+    if (focusQuestion) supplement += '# 本次希望AI帮我解决什么\n' + focusQuestion + '\n';
+
     let fullPrompt;
     if (state.isFollowUpMode && state.currentCustomerId) {
         const customer = getCustomer(state.currentCustomerId);
         const cardStr = buildCardContextString(customer);
         fullPrompt = prompt + '\n\n---\n\n# 客户记忆卡片\n\n' + cardStr + '\n\n---\n\n';
-        if (context) fullPrompt += context + '\n';
-        if (salesNotes) fullPrompt += '# 销售补充信息\n' + salesNotes + '\n';
-        if (focusQuestion) fullPrompt += '# 本次希望AI帮我解决什么\n' + focusQuestion + '\n';
+        if (supplement) fullPrompt += supplement + '\n';
         fullPrompt += '\n聊天记录：\n' + input;
     } else {
         fullPrompt = prompt + '\n\n---\n\n';
-        if (context) fullPrompt += context + '\n';
-        if (salesNotes) fullPrompt += '# 销售补充信息\n' + salesNotes + '\n';
-        if (focusQuestion) fullPrompt += '# 本次希望AI帮我解决什么\n' + focusQuestion + '\n';
+        if (supplement) fullPrompt += supplement + '\n';
         fullPrompt += '\n聊天记录：\n' + input;
     }
     navigator.clipboard.writeText(fullPrompt).then(() => {
@@ -1036,10 +1160,10 @@ async function analyze(input, mode) {
     // Update loading text
     if (state.isFollowUpMode && mode === 'chat') {
         $('loadingText').textContent = '正在更新客户档案...';
-        if ($('loadingHint')) $('loadingHint').textContent = 'AI正在对比心理变化并更新记忆卡片';
+        if ($('loadingHint')) $('loadingHint').textContent = 'AI正在调用销售思维知识库，对比心理变化并更新分析';
     } else {
         $('loadingText').textContent = '正在分析聊天记录...';
-        if ($('loadingHint')) $('loadingHint').textContent = 'AI正在从7个维度拆解这段对话';
+        if ($('loadingHint')) $('loadingHint').textContent = 'AI正在调用销售思维知识库，从9个维度深度分析这段对话';
     }
 
     animateLoadingSteps();
@@ -1057,6 +1181,10 @@ async function analyze(input, mode) {
     // 注入产品知识中心（v2.5）
     const knowledgeCtx = buildKnowledgeContext(input + ' ' + (salesNotes || '') + ' ' + (focusQuestion || ''));
     if (knowledgeCtx) supplement += knowledgeCtx + '\n';
+
+    // 注入销售思维知识库（v4.0）
+    const salesThinkingCtx = buildSalesThinkingContext(input + ' ' + (salesNotes || '') + ' ' + (focusQuestion || ''));
+    if (salesThinkingCtx) supplement += salesThinkingCtx + '\n';
 
     if (salesNotes) supplement += '# 销售补充信息\n' + salesNotes + '\n';
     if (focusQuestion) supplement += '# 本次希望AI帮我解决什么\n' + focusQuestion + '\n';
@@ -1398,44 +1526,51 @@ function renderSection(section) {
     const { title, content } = section;
 
     const firstAnalysisMap = {
-        '客户阶段': { class: 'blue' },
-        '客户心理': { class: 'purple' },
-        '销售问题': { class: 'red' },
-        '聊天评分': { class: 'amber' },
-        '最佳回复方案': { class: 'green' },
-        '发送节奏': { class: 'teal' },
-        '后续建议': { class: 'indigo' },
-        '产品匹配建议': { class: 'emerald' }
+        '客户背景判断': { class: 'blue' },
+        '客户当前状态': { class: 'purple' },
+        '客户真实心理分析': { class: 'purple' },
+        '当前销售机会': { class: 'amber' },
+        '销售风险提醒': { class: 'red' },
+        '下一步沟通策略': { class: 'teal' },
+        '产品/服务匹配建议': { class: 'emerald' },
+        '推荐回复': { class: 'green' },
+        '后续跟进建议': { class: 'indigo' },
+        '针对问题回答': { class: 'indigo' }
     };
 
     const incrementalMap = {
-        '客户状态变化': { class: 'blue' },
-        '最新心理判断': { class: 'purple' },
-        '成交机会': { class: 'amber' },
-        '策略效果评估': { class: 'teal' },
-        '下一句话怎么回复': { class: 'green' },
+        '客户背景判断': { class: 'blue' },
+        '客户当前状态': { class: 'purple' },
+        '客户真实心理分析': { class: 'purple' },
+        '当前销售机会': { class: 'amber' },
+        '销售风险提醒': { class: 'red' },
+        '下一步沟通策略': { class: 'teal' },
+        '产品/服务匹配建议': { class: 'emerald' },
+        '推荐回复': { class: 'green' },
         '后续跟进建议': { class: 'indigo' },
-        '风险提醒': { class: 'red' },
-        '针对问题回答': { class: 'indigo' },
-        '产品匹配建议': { class: 'emerald' }
+        '针对问题回答': { class: 'indigo' }
     };
 
     const badge = firstAnalysisMap[title] || incrementalMap[title] || { class: 'blue' };
 
-    if (title === '聊天评分' || title === '成交机会') {
+    if (title === '当前销售机会') {
         return renderRatingSection(content, badge, title);
     }
 
-    if (title === '最佳回复方案' || title === '下一句话怎么回复') {
+    if (title === '推荐回复') {
         return renderReplySection(content, badge, title);
     }
 
-    if (title === '发送节奏' || title === '后续跟进建议' || title === '后续建议') {
+    if (title === '后续跟进建议') {
         return renderSuggestionSection(content, badge, title);
     }
 
-    if (title === '产品匹配建议') {
+    if (title === '产品/服务匹配建议') {
         return renderProductMatchingSection(content, badge, title);
+    }
+
+    if (title === '销售风险提醒') {
+        return renderRiskSection(content, badge, title);
     }
 
     return '<div class="result-card">' +
@@ -1448,6 +1583,16 @@ function renderSection(section) {
 
 // ===== Render Product Matching Section =====
 function renderProductMatchingSection(content, badge, title) {
+    // 检查是否是"暂不推荐"的情况
+    if (content.indexOf('暂不适合推荐') >= 0 || content.indexOf('暂不推荐') >= 0) {
+        return '<div class="result-card product-matching-card">' +
+            '<div class="result-card-header">' +
+                '<span class="card-badge ' + badge.class + '">\uD83C\uDF81 ' + escapeHtml(title) + '</span>' +
+            '</div>' +
+            '<div class="result-card-body">' + renderMarkdown(content) + '</div>' +
+        '</div>';
+    }
+
     // 解析每个字段
     const fieldLabels = [
         '推荐产品',
@@ -1572,6 +1717,25 @@ function renderReplySection(content, badge, title) {
     return '<div class="result-card">' +
         '<div class="result-card-header"><span class="card-badge ' + badge.class + '">' + escapeHtml(title) + '</span></div>' +
         schemesHtml +
+    '</div>';
+}
+
+// ===== Render Risk Section =====
+function renderRiskSection(content, badge, title) {
+    var lines = content.split('\n').filter(function(l) { return l.trim(); });
+    var items = lines.map(function(line) {
+        var text = line.replace(/^\d+[.\u3001\uff09)]\s*/, '').trim();
+        return '<div class="risk-item-card">\u26A0\uFE0F ' + escapeHtml(text) + '</div>';
+    }).join('');
+    if (!items) {
+        return '<div class="result-card">' +
+            '<div class="result-card-header"><span class="card-badge ' + badge.class + '">\u26A0\uFE0F ' + escapeHtml(title) + '</span></div>' +
+            '<div class="result-card-body">' + renderMarkdown(content) + '</div>' +
+        '</div>';
+    }
+    return '<div class="result-card risk-card">' +
+        '<div class="result-card-header"><span class="card-badge ' + badge.class + '">\u26A0\uFE0F ' + escapeHtml(title) + '</span></div>' +
+        '<div class="risk-list-container">' + items + '</div>' +
     '</div>';
 }
 
@@ -1864,9 +2028,200 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const cancelBtn = $('kbFormCancel');
     if (cancelBtn) cancelBtn.addEventListener('click', closeKnowledgeForm);
+
+    // ===== Sales Thinking KB UI bindings =====
+    var stBtn = $('salesThinkingBtn');
+    if (stBtn) stBtn.addEventListener('click', openSalesThinkingCenter);
+    var stCloseBtn = $('stCloseBtn');
+    if (stCloseBtn) stCloseBtn.addEventListener('click', closeSalesThinkingCenter);
+
+    var stCatFilter = $('stCategoryFilter');
+    if (stCatFilter) {
+        stCatFilter.addEventListener('change', function() {
+            renderSalesThinkingList(stCatFilter.value, $('stSearchInput').value);
+        });
+    }
+    var stSearchInput = $('stSearchInput');
+    if (stSearchInput) {
+        var stTimer;
+        stSearchInput.addEventListener('input', function() {
+            clearTimeout(stTimer);
+            stTimer = setTimeout(function() {
+                renderSalesThinkingList($('stCategoryFilter').value, stSearchInput.value);
+            }, 200);
+        });
+    }
+
+    var stAddBtn = $('stAddBtn');
+    if (stAddBtn) stAddBtn.addEventListener('click', function() { openSalesThinkingForm(null); });
+
+    var stResetBtn = $('stResetBtn');
+    if (stResetBtn) {
+        stResetBtn.addEventListener('click', function() {
+            if (!confirm('\u786e\u5b9a\u8981\u6062\u590d\u9ed8\u8ba4\u9500\u552e\u601d\u7ef4\u77e5\u8bc6\u5e93\u5417\uff1f\u8fd9\u4f1a\u8986\u76d6\u60a8\u5f53\u524d\u7684\u4fee\u6539\u3002')) return;
+            resetSalesThinkingKB();
+            renderSalesThinkingList('all', '');
+            showToast('\u5df2\u6062\u590d\u9ed8\u8ba4');
+        });
+    }
+
+    var stFormClose = $('stFormClose');
+    if (stFormClose) stFormClose.addEventListener('click', closeSalesThinkingForm);
+
+    var stForm = $('stForm');
+    if (stForm) stForm.addEventListener('submit', saveSalesThinkingForm);
+
+    var stFormCancel = $('stFormCancel');
+    if (stFormCancel) stFormCancel.addEventListener('click', closeSalesThinkingForm);
 });
 
 // ===== End Knowledge Center Management =====
+
+// ===== Sales Thinking Knowledge Center Management UI =====
+
+function openSalesThinkingCenter() {
+    $('salesThinkingPanel').style.display = 'flex';
+    renderSalesThinkingList();
+}
+
+function closeSalesThinkingCenter() {
+    $('salesThinkingPanel').style.display = 'none';
+}
+
+function renderSalesThinkingList(filterCategory, keyword) {
+    filterCategory = filterCategory || 'all';
+    keyword = (keyword || '').toLowerCase().trim();
+    const kb = getSalesThinkingKB();
+    let filtered = kb;
+    if (filterCategory !== 'all') {
+        filtered = filtered.filter(function(e) { return e.category === filterCategory; });
+    }
+    if (keyword) {
+        filtered = filtered.filter(function(e) {
+            return (e.title && e.title.toLowerCase().includes(keyword))
+                || (e.scenario && e.scenario.toLowerCase().includes(keyword))
+                || (e.customerBehavior && e.customerBehavior.toLowerCase().includes(keyword))
+                || (e.salesJudgment && e.salesJudgment.toLowerCase().includes(keyword))
+                || (e.correctStrategy && e.correctStrategy.toLowerCase().includes(keyword));
+        });
+    }
+
+    var listEl = $('stKnowledgeList');
+    var countEl = $('stKnowledgeCount');
+    if (countEl) countEl.textContent = '\u5171 ' + kb.length + ' \u6761\u77e5\u8bc6' + (filtered.length !== kb.length ? '\uff08\u5df2\u7b5b\u9009 ' + filtered.length + ' \u6761\uff09' : '');
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = '<div class="knowledge-empty">\u6ca1\u6709\u5339\u914d\u7684\u77e5\u8bc6\u3002<br>\u70b9\u51fb\u53f3\u4e0a\u89d2\u300c+ \u65b0\u589e\u77e5\u8bc6\u300d\u6dfb\u52a0\u3002</div>';
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(function(e) {
+        var keywords = (e.keywords || []).slice(0, 6).map(function(k) { return '<span class="kb-tag">' + escapeHtml(k) + '</span>'; }).join('');
+        return '<div class="kb-card st-card">' +
+            '<div class="kb-card-header">' +
+                '<span class="kb-category st-cat-' + escapeHtml(e.category) + '">' + escapeHtml(e.category) + '</span>' +
+                '<span class="kb-name">' + escapeHtml(e.title) + '</span>' +
+            '</div>' +
+            '<div class="st-scenario">\ud83c\udfaf ' + escapeHtml(e.scenario || '') + '</div>' +
+            '<div class="st-judgment">\ud83d\udca1 ' + escapeHtml((e.salesJudgment || '').substring(0, 120)) + (e.salesJudgment && e.salesJudgment.length > 120 ? '...' : '') + '</div>' +
+            (e.correctStrategy ? '<div class="st-strategy">\u2705 ' + escapeHtml((e.correctStrategy || '').substring(0, 100)) + (e.correctStrategy.length > 100 ? '...' : '') + '</div>' : '') +
+            '<div class="kb-keywords">' + keywords + '</div>' +
+            '<div class="kb-actions">' +
+                '<button class="kb-btn kb-btn-edit" data-id="' + escapeAttr(e.id) + '">\u7f16\u8f91</button>' +
+                '<button class="kb-btn kb-btn-delete" data-id="' + escapeAttr(e.id) + '">\u5220\u9664</button>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+
+    listEl.querySelectorAll('.kb-btn-edit').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            openSalesThinkingForm(btn.getAttribute('data-id'));
+        });
+    });
+    listEl.querySelectorAll('.kb-btn-delete').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-id');
+            var entry = getSalesThinkingKB().find(function(e) { return e.id === id; });
+            if (!entry) return;
+            if (!confirm('\u786e\u5b9a\u8981\u5220\u9664\u300c' + entry.title + '\u300d\u5417\uff1f')) return;
+            deleteSalesThinkingEntry(id);
+            renderSalesThinkingList($('stCategoryFilter').value, $('stSearchInput').value);
+            showToast('\u5df2\u5220\u9664');
+        });
+    });
+}
+
+function openSalesThinkingForm(editId) {
+    var modal = $('stFormModal');
+    var titleEl = $('stFormTitle');
+    var form = $('stForm');
+    form.reset();
+    $('stFormId').value = '';
+
+    if (editId) {
+        var entry = getSalesThinkingKB().find(function(e) { return e.id === editId; });
+        if (!entry) return;
+        titleEl.textContent = '\u7f16\u8f91\u9500\u552e\u601d\u7ef4\u77e5\u8bc6';
+        $('stFormId').value = entry.id;
+        $('stFormCategory').value = entry.category || '\u5ba2\u6237\u5224\u65ad\u6a21\u578b';
+        $('stFormTitle').value = '';
+        $('stFormTitleInput').value = entry.title || '';
+        $('stFormScenario').value = entry.scenario || '';
+        $('stFormBehavior').value = entry.customerBehavior || '';
+        $('stFormJudgment').value = entry.salesJudgment || '';
+        $('stFormBasis').value = entry.judgmentBasis || '';
+        $('stFormWrong').value = entry.wrongApproach || '';
+        $('stFormCorrect').value = entry.correctStrategy || '';
+        $('stFormCase').value = entry.caseExample || '';
+        $('stFormAiRule').value = entry.aiRule || '';
+        $('stFormKeywords').value = (entry.keywords || []).join(', ');
+    } else {
+        titleEl.textContent = '\u65b0\u589e\u9500\u552e\u601d\u7ef4\u77e5\u8bc6';
+        $('stFormCategory').value = '\u5ba2\u6237\u5224\u65ad\u6a21\u578b';
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeSalesThinkingForm() {
+    $('stFormModal').style.display = 'none';
+}
+
+function saveSalesThinkingForm(e) {
+    if (e) e.preventDefault();
+    var id = $('stFormId').value;
+    var entry = {
+        category: $('stFormCategory').value,
+        title: $('stFormTitleInput').value.trim(),
+        scenario: $('stFormScenario').value.trim(),
+        customerBehavior: $('stFormBehavior').value.trim(),
+        salesJudgment: $('stFormJudgment').value.trim(),
+        judgmentBasis: $('stFormBasis').value.trim(),
+        wrongApproach: $('stFormWrong').value.trim(),
+        correctStrategy: $('stFormCorrect').value.trim(),
+        caseExample: $('stFormCase').value.trim(),
+        aiRule: $('stFormAiRule').value.trim(),
+        keywords: $('stFormKeywords').value.split(/[,，]/).map(function(s) { return s.trim(); }).filter(Boolean)
+    };
+
+    if (!entry.title) {
+        showToast('\u8bf7\u586b\u5199\u77e5\u8bc6\u6807\u9898');
+        return;
+    }
+
+    if (id) {
+        updateSalesThinkingEntry(id, entry);
+        showToast('\u5df2\u66f4\u65b0');
+    } else {
+        addSalesThinkingEntry(entry);
+        showToast('\u5df2\u6dfb\u52a0');
+    }
+
+    closeSalesThinkingForm();
+    renderSalesThinkingList($('stCategoryFilter').value, $('stSearchInput').value);
+}
+
+// ===== End Sales Thinking Knowledge Center Management =====
 
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {

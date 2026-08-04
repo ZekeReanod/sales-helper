@@ -1987,3 +1987,98 @@ textarea::placeholder { color: var(--text-muted); }
         flex: 1 1 100%;
     }
 }
+
+/* ===== Sales Thinking Card ===== */
+.st-card {
+    border-left: 3px solid var(--primary);
+}
+
+.st-scenario {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.st-judgment {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    margin-bottom: 8px;
+    padding: 0 2px;
+}
+
+.st-strategy {
+    font-size: 12px;
+    color: var(--success);
+    background: var(--success-light);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* Sales Thinking Category Colors */
+.st-cat-客户判断模型 { background: #dbeafe; color: #1e40af; }
+.st-cat-客户心理模型 { background: #ede9fe; color: #6d28d9; }
+.st-cat-沟通策略模型 { background: #ccfbf1; color: #0d9488; }
+.st-cat-异议处理模型 { background: #fef3c7; color: #b45309; }
+.st-cat-成交推进模型 { background: #d1fae5; color: #047857; }
+.st-cat-销售案例库 { background: #fce7f3; color: #be185d; }
+
+/* ===== Risk Section (9-段输出) ===== */
+.risk-card {
+    border: 1px solid #fca5a5;
+    background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%);
+}
+
+.risk-card .card-badge.red {
+    font-size: 14px;
+    padding: 6px 14px;
+    font-weight: 700;
+}
+
+.risk-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.risk-item-card {
+    background: white;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    transition: border-color 0.15s;
+}
+
+.risk-item-card:hover {
+    border-color: var(--danger);
+    background: #fef9f9;
+}
+
+/* ===== Sales Thinking Panel Responsive ===== */
+@media (max-width: 768px) {
+    #stKnowledgeList {
+        grid-template-columns: 1fr;
+    }
+}
+
+#stKnowledgeList {
+    overflow-y: auto;
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 12px;
+    padding: 4px 0;
+}
